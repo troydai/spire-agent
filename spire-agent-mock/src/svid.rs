@@ -1,6 +1,6 @@
 use rcgen::{
-    BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType,
-    ExtendedKeyUsagePurpose, IsCa, KeyPair, KeyUsagePurpose, SanType,
+    BasicConstraints, CertificateParams, DistinguishedName, DnType,
+    ExtendedKeyUsagePurpose, IsCa, Issuer, KeyPair, KeyUsagePurpose, SanType,
 };
 use time::{Duration, OffsetDateTime};
 
@@ -36,25 +36,23 @@ impl Default for SvidConfig {
 /// Generator for SPIFFE X.509 SVIDs
 pub struct SvidGenerator {
     config: SvidConfig,
-    ca_cert: Certificate,
-    ca_key_pair: KeyPair,
+    ca_issuer: Issuer<'static, KeyPair>,
     ca_cert_der: Vec<u8>,
 }
 
 impl SvidGenerator {
     /// Create a new SVID generator with the given configuration
     pub fn new(config: SvidConfig) -> Self {
-        let (ca_cert, ca_key_pair, ca_cert_der) = Self::generate_ca(&config.trust_domain);
+        let (ca_issuer, ca_cert_der) = Self::generate_ca(&config.trust_domain);
         Self {
             config,
-            ca_cert,
-            ca_key_pair,
+            ca_issuer,
             ca_cert_der,
         }
     }
 
     /// Generate a CA certificate for the trust domain
-    fn generate_ca(trust_domain: &str) -> (Certificate, KeyPair, Vec<u8>) {
+    fn generate_ca(trust_domain: &str) -> (Issuer<'static, KeyPair>, Vec<u8>) {
         let mut params = CertificateParams::default();
 
         // Set distinguished name
@@ -83,7 +81,9 @@ impl SvidGenerator {
         let ca_cert = params.self_signed(&key_pair).unwrap();
         let ca_cert_der = ca_cert.der().to_vec();
 
-        (ca_cert, key_pair, ca_cert_der)
+        let issuer = Issuer::new(params, key_pair);
+
+        (issuer, ca_cert_der)
     }
 
     /// Generate a new X.509 SVID
@@ -127,7 +127,7 @@ impl SvidGenerator {
 
         // Sign with CA
         let cert = params
-            .signed_by(&key_pair, &self.ca_cert, &self.ca_key_pair)
+            .signed_by(&key_pair, &self.ca_issuer)
             .unwrap();
 
         // Certificate chain: leaf cert followed by CA cert (concatenated DER)
