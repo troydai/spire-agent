@@ -14,6 +14,39 @@ enum Commands {
 
 #[derive(Parser)]
 struct ApiArgs {
+    #[arg(
+        long = "output",
+        value_name = "value",
+        default_value = "pretty",
+        global = true,
+        help = "Desired output format (pretty, json); default: pretty."
+    )]
+    output: String,
+    #[arg(long = "silent", global = true, help = "Suppress stdout")]
+    silent: bool,
+    #[arg(
+        long = "socketPath",
+        value_name = "string",
+        default_value = "/tmp/spire-agent/public/api.sock",
+        global = true,
+        help = "Path to the SPIRE Agent API Unix domain socket (default \"/tmp/spire-agent/public/api.sock\")"
+    )]
+    socket_path: String,
+    #[arg(
+        long = "timeout",
+        value_name = "value",
+        default_value = "5s",
+        global = true,
+        help = "Time to wait for a response (default 5s)"
+    )]
+    timeout: String,
+    #[arg(
+        long = "write",
+        value_name = "string",
+        global = true,
+        help = "Write SVID data to the specified path (optional; only available for pretty output format)"
+    )]
+    write: Option<String>,
     #[command(subcommand)]
     command: ApiCommand,
 }
@@ -21,6 +54,7 @@ struct ApiArgs {
 #[derive(Subcommand)]
 enum ApiCommand {
     Fetch(FetchArgs),
+    Watch,
 }
 
 #[derive(Parser)]
@@ -42,6 +76,13 @@ fn main() {
                 ApiCommand::Fetch(FetchArgs {
                     command: FetchCommand::X509,
                 }),
+            ..
+        })) => {
+            // Intentionally no-op for now.
+        }
+        Some(Commands::Api(ApiArgs {
+            command: ApiCommand::Watch,
+            ..
         })) => {
             // Intentionally no-op for now.
         }
