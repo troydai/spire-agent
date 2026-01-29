@@ -1,20 +1,10 @@
 use rcgen::{
-    BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType,
-    ExtendedKeyUsagePurpose, IsCa, KeyPair, KeyUsagePurpose, SanType,
+    BasicConstraints, CertificateParams, DistinguishedName, DnType,
+    ExtendedKeyUsagePurpose, IsCa, Issuer, KeyPair, KeyUsagePurpose, SanType,
 };
 use time::{Duration, OffsetDateTime};
 
-/// Represents a SPIFFE X.509 SVID with its private key and CA bundle
-pub struct X509Svid {
-    /// The SPIFFE ID (e.g., spiffe://example.org/workload)
-    pub spiffe_id: String,
-    /// DER-encoded certificate chain (leaf certificate first)
-    pub cert_chain_der: Vec<u8>,
-    /// DER-encoded PKCS#8 private key
-    pub private_key_der: Vec<u8>,
-    /// DER-encoded CA certificate (trust bundle)
-    pub bundle_der: Vec<u8>,
-}
+use crate::workload::X509svid;
 
 /// Configuration for SVID generation
 pub struct SvidConfig {
@@ -36,25 +26,23 @@ impl Default for SvidConfig {
 /// Generator for SPIFFE X.509 SVIDs
 pub struct SvidGenerator {
     config: SvidConfig,
-    ca_cert: Certificate,
-    ca_key_pair: KeyPair,
+    ca_issuer: Issuer<'static, KeyPair>,
     ca_cert_der: Vec<u8>,
 }
 
 impl SvidGenerator {
     /// Create a new SVID generator with the given configuration
     pub fn new(config: SvidConfig) -> Self {
-        let (ca_cert, ca_key_pair, ca_cert_der) = Self::generate_ca(&config.trust_domain);
+        let (ca_issuer, ca_cert_der) = Self::generate_ca(&config.trust_domain);
         Self {
             config,
-            ca_cert,
-            ca_key_pair,
+            ca_issuer,
             ca_cert_der,
         }
     }
 
     /// Generate a CA certificate for the trust domain
-    fn generate_ca(trust_domain: &str) -> (Certificate, KeyPair, Vec<u8>) {
+    fn generate_ca(trust_domain: &str) -> (Issuer<'static, KeyPair>, Vec<u8>) {
         let mut params = CertificateParams::default();
 
         // Set distinguished name
@@ -83,11 +71,13 @@ impl SvidGenerator {
         let ca_cert = params.self_signed(&key_pair).unwrap();
         let ca_cert_der = ca_cert.der().to_vec();
 
-        (ca_cert, key_pair, ca_cert_der)
+        let issuer = Issuer::new(params, key_pair);
+
+        (issuer, ca_cert_der)
     }
 
     /// Generate a new X.509 SVID
-    pub fn generate_svid(&self) -> X509Svid {
+    pub fn generate_svid(&self) -> X509svid {
         let spiffe_id = format!(
             "spiffe://{}{}",
             self.config.trust_domain, self.config.workload_path
@@ -127,18 +117,19 @@ impl SvidGenerator {
 
         // Sign with CA
         let cert = params
-            .signed_by(&key_pair, &self.ca_cert, &self.ca_key_pair)
+            .signed_by(&key_pair, &self.ca_issuer)
             .unwrap();
 
         // Certificate chain: leaf cert followed by CA cert (concatenated DER)
         let mut cert_chain = cert.der().to_vec();
         cert_chain.extend_from_slice(&self.ca_cert_der);
 
-        X509Svid {
+        X509svid {
             spiffe_id,
-            cert_chain_der: cert_chain,
-            private_key_der: key_pair.serialize_der(),
-            bundle_der: self.ca_cert_der.clone(),
+            x509_svid: cert_chain,
+            x509_svid_key: key_pair.serialize_der(),
+            bundle: self.ca_cert_der.clone(),
+            hint: String::new(),
         }
     }
 }
@@ -154,9 +145,9 @@ mod tests {
         let svid = generator.generate_svid();
 
         assert_eq!(svid.spiffe_id, "spiffe://example.org/workload");
-        assert!(!svid.cert_chain_der.is_empty());
-        assert!(!svid.private_key_der.is_empty());
-        assert!(!svid.bundle_der.is_empty());
+        assert!(!svid.x509_svid.is_empty());
+        assert!(!svid.x509_svid_key.is_empty());
+        assert!(!svid.bundle.is_empty());
     }
 
     #[test]
@@ -167,8 +158,8 @@ mod tests {
 
         // Try to parse with spiffe crate - this is what the client does
         let result = spiffe::svid::x509::X509Svid::parse_from_der(
-            &svid.cert_chain_der,
-            &svid.private_key_der,
+            &svid.x509_svid,
+            &svid.x509_svid_key,
         );
 
         match &result {

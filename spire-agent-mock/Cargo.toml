@@ -3,28 +3,25 @@ name = "spire-agent-mock"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-name = "spire_agent_mock"
-path = "src/lib.rs"
-
 [[bin]]
 name = "spire-agent-mock"
 path = "src/main.rs"
 
 [dependencies]
-tonic = "0.9"
+tonic = "0.14"
+tonic-prost = "0.14"
 tokio = { version = "1", features = ["full"] }
 anyhow = "1.0"
-spiffe = { version = "0.10.2", features = ["x509"] }
-prost = "0.11"
-prost-types = "0.11"
-tempfile = "3.8"
+spiffe = { version = "0.11", features = ["x509"] }
+prost = "0.14"
+prost-types = "0.14"
+tempfile = "3"
 futures-util = "0.3"
 tokio-stream = { version = "0.1", features = ["net"] }
-clap = { version = "4.4", features = ["derive", "env"] }
-rcgen = { version = "0.13", features = ["pem"] }
+clap = { version = "4.5", features = ["derive", "env"] }
+rcgen = { version = "0.14", features = ["pem"] }
 time = "0.3"
 async-stream = "0.3"
 
 [build-dependencies]
-tonic-build = "0.9"
+tonic-prost-build = "0.14"
