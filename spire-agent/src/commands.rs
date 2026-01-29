@@ -30,7 +30,7 @@ struct ApiArgs {
     #[arg(long = "silent", global = true, help = "Suppress stdout")]
     silent: bool,
     #[arg(
-        long = "socketPath",
+        long = "socket-path",
         value_name = "string",
         default_value = "/tmp/spire-agent/public/api.sock",
         global = true,
