@@ -4,4 +4,19 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.5.55", features = ["derive"] }
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"] }
+tonic = "0.14"
+tonic-prost = "0.14"
+prost = "0.14"
+prost-types = "0.14"
+tower = "0.5"
+hyper-util = { version = "0.1", features = ["tokio"] }
+x509-cert = "0.2"
+der = "0.7"
+const-oid = { version = "0.9", features = ["db"] }
+anyhow = "1.0"
+chrono = "0.4"
+
+[build-dependencies]
+tonic-prost-build = "0.14"
