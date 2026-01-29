@@ -10,12 +10,10 @@ use tonic::transport::{Endpoint, Uri};
 use tower::service_fn;
 use x509_cert::Certificate;
 
-mod workload {
-    tonic::include_proto!("_");
-}
+mod workload;
 
-use workload::spiffe_workload_api_client::SpiffeWorkloadApiClient;
 use workload::X509svidRequest;
+use workload::spiffe_workload_api_client::SpiffeWorkloadApiClient;
 
 #[derive(Parser)]
 #[command(name = "spire-agent", version, about = "Agent CLI for Spire")]
@@ -123,8 +121,9 @@ fn parse_cert_chain(der_bytes: &[u8]) -> Result<Vec<Certificate>> {
     let mut reader = der::SliceReader::new(der_bytes).context("failed to create DER reader")?;
 
     while !reader.is_finished() {
-        let cert =
-            reader.decode::<Certificate>().context("failed to parse certificate")?;
+        let cert = reader
+            .decode::<Certificate>()
+            .context("failed to parse certificate")?;
         certs.push(cert);
     }
 
@@ -209,7 +208,8 @@ async fn fetch_x509(socket_path: &str, timeout: Duration, silent: bool) -> Resul
                 .extensions
                 .as_ref()
                 .and_then(|exts| {
-                    exts.iter().find(|ext| ext.extn_id == ID_CE_BASIC_CONSTRAINTS)
+                    exts.iter()
+                        .find(|ext| ext.extn_id == ID_CE_BASIC_CONSTRAINTS)
                 })
                 .and_then(|ext| {
                     x509_cert::ext::pkix::BasicConstraints::from_der(ext.extn_value.as_bytes()).ok()
