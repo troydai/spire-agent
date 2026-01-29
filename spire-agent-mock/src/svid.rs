@@ -26,28 +26,32 @@ impl Default for SvidConfig {
 /// Generator for SPIFFE X.509 SVIDs
 pub struct SvidGenerator {
     config: SvidConfig,
-    ca_issuer: Issuer<'static, KeyPair>,
-    ca_cert_der: Vec<u8>,
+    root_cert_der: Vec<u8>,
+    spire_server_issuer: Issuer<'static, KeyPair>,
+    spire_server_cert_der: Vec<u8>,
 }
 
 impl SvidGenerator {
     /// Create a new SVID generator with the given configuration
     pub fn new(config: SvidConfig) -> Self {
-        let (ca_issuer, ca_cert_der) = Self::generate_ca(&config.trust_domain);
+        let (root_issuer, root_cert_der) = Self::generate_root_ca(&config.trust_domain);
+        let (spire_server_issuer, spire_server_cert_der) =
+            Self::generate_spire_server_ca(&config.trust_domain, &root_issuer);
         Self {
             config,
-            ca_issuer,
-            ca_cert_der,
+            root_cert_der,
+            spire_server_issuer,
+            spire_server_cert_der,
         }
     }
 
-    /// Generate a CA certificate for the trust domain
-    fn generate_ca(trust_domain: &str) -> (Issuer<'static, KeyPair>, Vec<u8>) {
+    /// Generate a root CA certificate for the trust domain
+    fn generate_root_ca(trust_domain: &str) -> (Issuer<'static, KeyPair>, Vec<u8>) {
         let mut params = CertificateParams::default();
 
         // Set distinguished name
         let mut dn = DistinguishedName::new();
-        dn.push(DnType::CommonName, format!("{} CA", trust_domain));
+        dn.push(DnType::CommonName, format!("{} Root CA", trust_domain));
         dn.push(DnType::OrganizationName, trust_domain);
         params.distinguished_name = dn;
 
@@ -55,7 +59,7 @@ impl SvidGenerator {
         params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
         params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
 
-        // Set validity period (1 year for CA)
+        // Set validity period (1 year for root CA)
         let now = OffsetDateTime::now_utc();
         params.not_before = now;
         params.not_after = now + Duration::days(365);
@@ -74,6 +78,47 @@ impl SvidGenerator {
         let issuer = Issuer::new(params, key_pair);
 
         (issuer, ca_cert_der)
+    }
+
+    /// Generate a SPIRE Server signing CA certificate signed by the root CA
+    fn generate_spire_server_ca(
+        trust_domain: &str,
+        root_issuer: &Issuer<'static, KeyPair>,
+    ) -> (Issuer<'static, KeyPair>, Vec<u8>) {
+        let mut params = CertificateParams::default();
+
+        // Set distinguished name
+        let mut dn = DistinguishedName::new();
+        dn.push(
+            DnType::CommonName,
+            format!("{} SPIRE Server CA", trust_domain),
+        );
+        dn.push(DnType::OrganizationName, trust_domain);
+        params.distinguished_name = dn;
+
+        // SPIRE Server signing CA settings
+        params.is_ca = IsCa::Ca(BasicConstraints::Constrained(0));
+        params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+
+        // Set validity period (1 month for SPIRE Server signing CA)
+        let now = OffsetDateTime::now_utc();
+        params.not_before = now;
+        params.not_after = now + Duration::days(30);
+
+        // Add SPIFFE trust domain as URI SAN
+        let trust_domain_uri = format!("spiffe://{}", trust_domain);
+        params.subject_alt_names = vec![SanType::URI(trust_domain_uri.parse().unwrap())];
+
+        // Generate key pair
+        let key_pair = KeyPair::generate().unwrap();
+
+        // Generate SPIRE Server signing certificate signed by root
+        let spire_server_cert = params.signed_by(&key_pair, root_issuer).unwrap();
+        let spire_server_cert_der = spire_server_cert.der().to_vec();
+
+        let issuer = Issuer::new(params, key_pair);
+
+        (issuer, spire_server_cert_der)
     }
 
     /// Generate a new X.509 SVID
@@ -117,18 +162,19 @@ impl SvidGenerator {
 
         // Sign with CA
         let cert = params
-            .signed_by(&key_pair, &self.ca_issuer)
+            .signed_by(&key_pair, &self.spire_server_issuer)
             .unwrap();
 
-        // Certificate chain: leaf cert followed by CA cert (concatenated DER)
+        // Certificate chain (per SPIFFE Workload API): leaf cert + intermediates only.
+        // Root CAs belong in the bundle.
         let mut cert_chain = cert.der().to_vec();
-        cert_chain.extend_from_slice(&self.ca_cert_der);
+        cert_chain.extend_from_slice(&self.spire_server_cert_der);
 
         X509svid {
             spiffe_id,
             x509_svid: cert_chain,
             x509_svid_key: key_pair.serialize_der(),
-            bundle: self.ca_cert_der.clone(),
+            bundle: self.root_cert_der.clone(),
             hint: String::new(),
         }
     }
