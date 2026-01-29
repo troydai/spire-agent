@@ -3,10 +3,6 @@ name = "spire-agent-mock"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-name = "spire_agent_mock"
-path = "src/lib.rs"
-
 [[bin]]
 name = "spire-agent-mock"
 path = "src/main.rs"
