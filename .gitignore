@@ -24,3 +24,7 @@ target
 # Added by cargo
 
 /target
+
+# Temp
+/tmp
+.DS_Store

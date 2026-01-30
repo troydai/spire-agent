@@ -1,9 +1,14 @@
-use std::time::{Duration, Instant};
+use std::{
+    fs,
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use anyhow::{Context, Result};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, Utc};
 use const_oid::db::rfc5280::ID_CE_BASIC_CONSTRAINTS;
-use der::{Decode, Reader};
+use der::{Decode, Encode, Reader};
 use hyper_util::rt::TokioIo;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
@@ -14,17 +19,23 @@ use crate::workload::{
     spiffe_workload_api_client::SpiffeWorkloadApiClient,
 };
 
-pub async fn fetch_x509(socket_path: &str, timeout: Duration, silent: bool) -> Result<()> {
+pub async fn fetch_x509(
+    socket_path: &str,
+    timeout: Duration,
+    silent: bool,
+    write_dir: Option<&str>,
+) -> Result<()> {
     let start = Instant::now();
     let mut client = connect_client(socket_path).await?;
     let resp = fetch_x509svid(&mut client, timeout).await?;
 
-    if silent {
-        return Ok(());
-    }
-
     let elapsed = start.elapsed();
-    print_svids(resp, elapsed)?;
+    if !silent {
+        print_svids(&resp, elapsed)?;
+    }
+    if let Some(dir) = write_dir {
+        write_svids(&resp, dir, silent)?;
+    }
 
     Ok(())
 }
@@ -64,8 +75,8 @@ async fn fetch_x509svid(client: &mut Client, timeout: Duration) -> Result<X509sv
     Ok(resp)
 }
 
-fn print_svids(resp: X509svidResponse, elapsed: Duration) -> Result<()> {
-    let svids = resp.svids;
+fn print_svids(resp: &X509svidResponse, elapsed: Duration) -> Result<()> {
+    let svids = &resp.svids;
     println!(
         "Received {} svid after {:.6}ms\n",
         svids.len(),
@@ -76,6 +87,82 @@ fn print_svids(resp: X509svidResponse, elapsed: Duration) -> Result<()> {
         print_svid(&svid)?;
     }
 
+    Ok(())
+}
+
+fn write_svids(resp: &X509svidResponse, write_dir: &str, silent: bool) -> Result<()> {
+    let svids = &resp.svids;
+    let dir = Path::new(write_dir);
+    if dir.exists() && !dir.is_dir() {
+        anyhow::bail!("write path is not a directory: {}", dir.display());
+    }
+    fs::create_dir_all(dir).context("failed to create output directory")?;
+
+    for (idx, svid) in svids.iter().enumerate() {
+        let svid_path = dir.join(format!("svid.{idx}.pem"));
+        let key_path = dir.join(format!("svid.{idx}.key"));
+        let bundle_path = dir.join(format!("bundle.{idx}.pem"));
+
+        let svid_pem = pem_cert_chain(&svid.x509_svid)?;
+        write_pem_file(&svid_path, &svid_pem, Some(0o644))?;
+        if !silent {
+            println!("Writing SVID #{} to file {}.", idx, svid_path.display());
+        }
+
+        let key_pem = pem_single("PRIVATE KEY", &svid.x509_svid_key)?;
+        write_pem_file(&key_path, &key_pem, Some(0o600))?;
+        if !silent {
+            println!("Writing key #{} to file {}.", idx, key_path.display());
+        }
+
+        let bundle_pem = pem_cert_chain(&svid.bundle)?;
+        write_pem_file(&bundle_path, &bundle_pem, Some(0o644))?;
+        if !silent {
+            println!("Writing bundle #{} to file {}.", idx, bundle_path.display());
+        }
+    }
+
+    Ok(())
+}
+
+fn pem_cert_chain(der_bytes: &[u8]) -> Result<String> {
+    let certs = parse_cert_chain(der_bytes)?;
+    let mut pem = String::new();
+    for cert in certs {
+        let der = cert.to_der().context("failed to encode certificate")?;
+        pem.push_str(&pem_single("CERTIFICATE", &der)?);
+    }
+    Ok(pem)
+}
+
+fn pem_single(label: &str, der_bytes: &[u8]) -> Result<String> {
+    let b64 = STANDARD.encode(der_bytes);
+    let mut out = String::new();
+    out.push_str("-----BEGIN ");
+    out.push_str(label);
+    out.push_str("-----\n");
+    for chunk in b64.as_bytes().chunks(64) {
+        out.push_str(
+            std::str::from_utf8(chunk).context("failed to encode base64 output")?,
+        );
+        out.push('\n');
+    }
+    out.push_str("-----END ");
+    out.push_str(label);
+    out.push_str("-----\n");
+    Ok(out)
+}
+
+fn write_pem_file(path: &Path, contents: &str, mode: Option<u32>) -> Result<()> {
+    fs::write(path, contents.as_bytes()).with_context(|| {
+        format!("failed to write {}", path.display())
+    })?;
+    #[cfg(unix)]
+    if let Some(mode) = mode {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(mode))
+            .with_context(|| format!("failed to set permissions on {}", path.display()))?;
+    }
     Ok(())
 }
 
