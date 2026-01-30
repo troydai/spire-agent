@@ -17,7 +17,7 @@ der = "0.7"
 const-oid = { version = "0.9", features = ["db"] }
 anyhow = "1.0"
 chrono = "0.4"
-base64 = "0.22"
+pem-rfc7468 = { version = "0.7", features = ["alloc"] }
 
 [build-dependencies]
 tonic-prost-build = "0.14"

@@ -4,12 +4,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::{Context, Result};
-use base64::{Engine as _, engine::general_purpose::STANDARD};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use const_oid::db::rfc5280::ID_CE_BASIC_CONSTRAINTS;
 use der::{Decode, Encode, Reader};
 use hyper_util::rt::TokioIo;
+use pem_rfc7468::LineEnding;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 use x509_cert::Certificate;
@@ -136,21 +136,8 @@ fn pem_cert_chain(der_bytes: &[u8]) -> Result<String> {
 }
 
 fn pem_single(label: &str, der_bytes: &[u8]) -> Result<String> {
-    let b64 = STANDARD.encode(der_bytes);
-    let mut out = String::new();
-    out.push_str("-----BEGIN ");
-    out.push_str(label);
-    out.push_str("-----\n");
-    for chunk in b64.as_bytes().chunks(64) {
-        out.push_str(
-            std::str::from_utf8(chunk).context("failed to encode base64 output")?,
-        );
-        out.push('\n');
-    }
-    out.push_str("-----END ");
-    out.push_str(label);
-    out.push_str("-----\n");
-    Ok(out)
+    pem_rfc7468::encode_string(label, LineEnding::LF, der_bytes)
+        .map_err(|err| anyhow!("failed to encode PEM data: {err}"))
 }
 
 fn write_pem_file(path: &Path, contents: &str, mode: Option<u32>) -> Result<()> {
