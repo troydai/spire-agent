@@ -10,6 +10,8 @@ use const_oid::db::rfc5280::ID_CE_BASIC_CONSTRAINTS;
 use der::{Decode, Encode, Reader};
 use hyper_util::rt::TokioIo;
 use pem_rfc7468::LineEnding;
+use tonic::metadata::MetadataValue;
+use tonic::Status;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 use x509_cert::Certificate;
@@ -41,7 +43,15 @@ pub async fn fetch_x509(
     Ok(())
 }
 
-type Client = SpiffeWorkloadApiClient<Channel>;
+type Client = SpiffeWorkloadApiClient<
+    tonic::service::interceptor::InterceptedService<
+        Channel,
+        fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status>,
+    >,
+>;
+
+const SECURITY_HEADER_KEY: &str = "workload.spiffe.io";
+const SECURITY_HEADER_VALUE: &str = "true";
 
 async fn connect_client(socket_path: &str) -> Result<Client> {
     let socket_path = socket_path.to_string();
@@ -56,7 +66,18 @@ async fn connect_client(socket_path: &str) -> Result<Client> {
         .await
         .context("failed to connect to socket")?;
 
-    Ok(SpiffeWorkloadApiClient::new(channel))
+    Ok(SpiffeWorkloadApiClient::with_interceptor(
+        channel,
+        add_security_header,
+    ))
+}
+
+fn add_security_header(mut request: tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
+    request.metadata_mut().insert(
+        SECURITY_HEADER_KEY,
+        MetadataValue::from_static(SECURITY_HEADER_VALUE),
+    );
+    Ok(request)
 }
 
 async fn fetch_x509svid(client: &mut Client, timeout: Duration) -> Result<X509svidResponse> {

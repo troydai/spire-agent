@@ -17,6 +17,7 @@ UDS_URI="unix://$SOCKET_PATH"
 
 echo "Testing FetchX509SVID..."
 grpcurl -plaintext \
+  -H "workload.spiffe.io:true" \
   -import-path "$PROJECT_ROOT/proto" \
   -proto "$PROJECT_ROOT/proto/workload.proto" \
   -d '{}' \
@@ -25,6 +26,7 @@ grpcurl -plaintext \
 
 echo -e "\nTesting FetchJWTSVID..."
 grpcurl -plaintext \
+  -H "workload.spiffe.io:true" \
   -import-path "$PROJECT_ROOT/proto" \
   -proto "$PROJECT_ROOT/proto/workload.proto" \
   -d '{"audience": ["my-service"]}' \
