@@ -25,6 +25,8 @@ target
 
 /target
 
+# Sandbox artifacts (kubeconfig, certs, etc.)
+/sandbox/artifacts/
 # Temp
 /tmp
 .DS_Store
