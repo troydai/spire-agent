@@ -1,22 +1,25 @@
-# spire-agent sandbox
+# spire-agent (Rust)
 
-This repo includes a sandbox environment for running SPIRE server/agent inside a local kind cluster. The sandbox scripts and manifests live under `sandbox/` and are wired to top-level Makefile targets.
+This repository contains a Rust implementation of SPIRE Agent.
 
-## Prerequisites
+## Development guide
 
+### Sandbox environment (local kind cluster)
+
+The sandbox spins up a local kind cluster with SPIRE server/agent and a small test workload. The sandbox scripts and manifests live under `sandbox/` and are wired to top-level Makefile targets.
+
+Prerequisites:
 - kind
 - kubectl
 - helm
 - jq
 - openssl
 
-Run this once to verify tooling:
+Verify tooling:
 
 ```sh
 make tools
 ```
-
-## Quick start
 
 Bring the environment up:
 
@@ -30,8 +33,7 @@ Tear it down:
 make env-down
 ```
 
-## Common targets
-
+Common targets:
 - `make cluster-up` / `make cluster-down`: create or delete the kind cluster.
 - `make certs`: generate CA and SPIRE server certs under `sandbox/artifacts/certs`.
 - `make deploy-spire-server` / `make undeploy-spire-server`
@@ -40,8 +42,7 @@ make env-down
 - `make deploy-registration` / `make undeploy-registration`
 - `make deploy-httpbin` / `make undeploy-httpbin`
 
-## Notes
-
+Notes:
 - Artifacts (kubeconfig, certs) are written to `sandbox/artifacts/`.
 - The default SPIRE server address used by the agent is `spire-server.spire-server.svc.cluster.local`.
 - If you need to rotate certificates, re-run `make certs` and redeploy the SPIRE server.
