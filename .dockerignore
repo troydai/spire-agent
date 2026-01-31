@@ -1,0 +1,8 @@
+target
+.git
+.github
+sandbox/artifacts
+sandbox/deploy
+sandbox/scripts
+doc
+**/*.log
