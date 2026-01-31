@@ -47,13 +47,16 @@ fn verify_security_header(request: Request<()>) -> Result<Request<()>, Status> {
         .filter_map(|value| value.to_str().ok())
         .collect();
 
-    if values.len() == 1 && values[0] == SECURITY_HEADER_VALUE {
-        return Ok(request);
+    match values.as_slice() {
+        [value] if *value == SECURITY_HEADER_VALUE => Ok(request),
+        [] => Err(Status::invalid_argument(
+            "security header missing from request",
+        )),
+        [..] if values.len() > 1 => Err(Status::invalid_argument(
+            "security header duplicated in request",
+        )),
+        _ => Err(Status::invalid_argument("security header invalid")),
     }
-
-    Err(Status::invalid_argument(
-        "security header missing from request",
-    ))
 }
 
 struct MockWorkloadApi {
