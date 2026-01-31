@@ -30,11 +30,12 @@ pub async fn fetch_x509(
     let resp = fetch_x509svid(&mut client, timeout).await?;
 
     let elapsed = start.elapsed();
+    let svids = resp.svids;
     if !silent {
-        print_svids(&resp, elapsed)?;
+        print_svids(&svids, elapsed)?;
     }
     if let Some(dir) = write_dir {
-        write_svids(&resp, dir, silent)?;
+        write_svids(&svids, dir, silent)?;
     }
 
     Ok(())
@@ -75,8 +76,7 @@ async fn fetch_x509svid(client: &mut Client, timeout: Duration) -> Result<X509sv
     Ok(resp)
 }
 
-fn print_svids(resp: &X509svidResponse, elapsed: Duration) -> Result<()> {
-    let svids = &resp.svids;
+fn print_svids(svids: &[X509svid], elapsed: Duration) -> Result<()> {
     println!(
         "Received {} svid after {:.6}ms\n",
         svids.len(),
@@ -90,8 +90,7 @@ fn print_svids(resp: &X509svidResponse, elapsed: Duration) -> Result<()> {
     Ok(())
 }
 
-fn write_svids(resp: &X509svidResponse, write_dir: &str, silent: bool) -> Result<()> {
-    let svids = &resp.svids;
+fn write_svids(svids: &[X509svid], write_dir: &str, silent: bool) -> Result<()> {
     let dir = Path::new(write_dir);
     if dir.exists() && !dir.is_dir() {
         anyhow::bail!("write path is not a directory: {}", dir.display());
