@@ -44,11 +44,11 @@ spec:
             serviceAccountName: httpbin
             initContainers:
                 - name: spiffe-helper
-                  image: spiffe-helper:test
+                  image: ghcr.io/spiffe/spiffe-helper:latest
                   imagePullPolicy: IfNotPresent
                   restartPolicy: Always
                   command:
-                      - /usr/local/bin/spiffe-helper
+                      - /spiffe-helper
                       - --config
                       - /etc/spiffe-helper/helper.conf
                   ports:
@@ -93,8 +93,9 @@ spec:
                         mountPath: /tmp/certs
                         readOnly: true
                 - name: spiffe-debug
-                  image: spiffe-debug:latest
-                  imagePullPolicy: Never
+                  image: alpine:3.20
+                  imagePullPolicy: IfNotPresent
+                  command: ["sleep", "3600"]
                   resources:
                       requests:
                           memory: "64Mi"
