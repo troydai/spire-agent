@@ -6,8 +6,7 @@ use std::{
 
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
-use const_oid::db::rfc5280::ID_CE_BASIC_CONSTRAINTS;
-use der::{Decode, Encode, Reader};
+use der::{Encode, Reader};
 use hyper_util::rt::TokioIo;
 use pem_rfc7468::LineEnding;
 use tonic::metadata::MetadataValue;
@@ -195,9 +194,12 @@ fn write_pem_file(path: &Path, contents: &str, mode: Option<u32>) -> Result<()> 
 fn print_svid(svid: &X509svid) -> Result<()> {
     println!("SPIFFE ID:\t\t{}", svid.spiffe_id);
 
-    let certs = parse_cert_chain(&svid.x509_svid)?;
-    print_leaf_validity(&certs);
-    print_chain_validity(&certs);
+    let svid_certs = parse_cert_chain(&svid.x509_svid)?;
+    print_leaf_validity(&svid_certs);
+    print_intermediate_validity(&svid_certs);
+
+    let bundle_certs = parse_cert_chain(&svid.bundle)?;
+    print_bundle_validity(&bundle_certs);
 
     Ok(())
 }
@@ -214,42 +216,13 @@ fn print_leaf_validity(certs: &[Certificate]) {
     println!("SVID Valid Until:\t{}", format_utc_time(not_after));
 }
 
-fn print_chain_validity(certs: &[Certificate]) {
+fn print_intermediate_validity(certs: &[Certificate]) {
     let mut intermediate_num = 1;
-    let mut ca_num = 1;
 
     for cert in certs.iter().skip(1) {
         let validity = &cert.tbs_certificate.validity;
         let not_before = parse_x509_time(&validity.not_before);
         let not_after = parse_x509_time(&validity.not_after);
-
-        let is_ca = cert
-            .tbs_certificate
-            .extensions
-            .as_ref()
-            .and_then(|exts| {
-                exts.iter()
-                    .find(|ext| ext.extn_id == ID_CE_BASIC_CONSTRAINTS)
-            })
-            .and_then(|ext| {
-                x509_cert::ext::pkix::BasicConstraints::from_der(ext.extn_value.as_bytes()).ok()
-            })
-            .is_some_and(|bc| bc.ca);
-
-        if is_ca {
-            println!(
-                "CA #{} Valid After:\t{}",
-                ca_num,
-                format_utc_time(not_before)
-            );
-            println!(
-                "CA #{} Valid Until:\t{}",
-                ca_num,
-                format_utc_time(not_after)
-            );
-            ca_num += 1;
-            continue;
-        }
 
         println!(
             "Intermediate #{} Valid After:\t{}",
@@ -262,6 +235,28 @@ fn print_chain_validity(certs: &[Certificate]) {
             format_utc_time(not_after)
         );
         intermediate_num += 1;
+    }
+}
+
+fn print_bundle_validity(certs: &[Certificate]) {
+    let mut ca_num = 1;
+
+    for cert in certs {
+        let validity = &cert.tbs_certificate.validity;
+        let not_before = parse_x509_time(&validity.not_before);
+        let not_after = parse_x509_time(&validity.not_after);
+
+        println!(
+            "CA #{} Valid After:\t{}",
+            ca_num,
+            format_utc_time(not_before)
+        );
+        println!(
+            "CA #{} Valid Until:\t{}",
+            ca_num,
+            format_utc_time(not_after)
+        );
+        ca_num += 1;
     }
 }
 
