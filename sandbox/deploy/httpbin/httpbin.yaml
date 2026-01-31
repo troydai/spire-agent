@@ -16,9 +16,12 @@ metadata:
     namespace: httpbin
 data:
     helper.conf: |
-        agent_address = "unix:///run/spire/sockets/agent.sock"
+        agent_address = "/run/spire/sockets/agent.sock"
         daemon_mode = true
         cert_dir = "/tmp/certs"
+        svid_file_name = "svid.pem"
+        svid_key_file_name = "svid_key.pem"
+        svid_bundle_file_name = "bundle.pem"
         health_checks {
           listener_enabled = true
           bind_port = 8080
@@ -44,7 +47,7 @@ spec:
             serviceAccountName: httpbin
             initContainers:
                 - name: spiffe-helper
-                  image: ghcr.io/spiffe/spiffe-helper:latest
+                  image: ghcr.io/spiffe/spiffe-helper:0.10.0
                   imagePullPolicy: IfNotPresent
                   restartPolicy: Always
                   command:
