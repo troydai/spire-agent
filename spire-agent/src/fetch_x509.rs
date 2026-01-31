@@ -109,7 +109,7 @@ fn write_svids(resp: &X509svidResponse, write_dir: &str, silent: bool) -> Result
             println!("Writing SVID #{} to file {}.", idx, svid_path.display());
         }
 
-        let key_pem = pem_single("PRIVATE KEY", &svid.x509_svid_key)?;
+        let key_pem = pem_key(&svid.x509_svid_key)?;
         write_pem_file(&key_path, &key_pem, Some(0o600))?;
         if !silent {
             println!("Writing key #{} to file {}.", idx, key_path.display());
@@ -138,6 +138,10 @@ fn pem_cert_chain(der_bytes: &[u8]) -> Result<String> {
 fn pem_single(label: &str, der_bytes: &[u8]) -> Result<String> {
     pem_rfc7468::encode_string(label, LineEnding::LF, der_bytes)
         .map_err(|err| anyhow!("failed to encode PEM data: {err}"))
+}
+
+fn pem_key(der_bytes: &[u8]) -> Result<String> {
+    pem_single("PRIVATE KEY", der_bytes)
 }
 
 fn write_pem_file(path: &Path, contents: &str, mode: Option<u32>) -> Result<()> {
