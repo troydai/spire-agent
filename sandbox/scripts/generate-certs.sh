@@ -95,7 +95,7 @@ generate_spire_server() {
       echo "basicConstraints=CA:FALSE"
       echo "keyUsage=digitalSignature"
       echo "extendedKeyUsage=serverAuth"
-      echo "subjectAltName=DNS:spire-server,DNS:spire-server.default.svc.cluster.local"
+      echo "subjectAltName=DNS:spire-server,DNS:spire-server.default.svc.cluster.local,DNS:spire-server.spire-server.svc.cluster.local"
     )
 
   echo -e "${COLOR_GREEN}✓${COLOR_RESET} SPIRE server certificate and key generated successfully"
