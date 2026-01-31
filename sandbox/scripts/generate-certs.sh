@@ -47,8 +47,8 @@ generate_ca() {
     return 0
   fi
 
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating CA private key ${COLOR_BOLD}(ECDSA P-384)${COLOR_RESET} in PKCS#8 format..."
-  openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:secp384r1 -out "${CA_KEY}"
+  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating CA private key ${COLOR_BOLD}(RSA 4096)${COLOR_RESET} in PKCS#8 format..."
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out "${CA_KEY}"
 
   echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating CA certificate..."
   openssl req -new -x509 -days 3650 -key "${CA_KEY}" -out "${CA_CERT}" \
@@ -66,8 +66,8 @@ generate_spire_server() {
     return 0
   fi
 
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating SPIRE server private key ${COLOR_BOLD}(ECDSA P-256)${COLOR_RESET} in PKCS#8 format..."
-  openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 -out "${SERVER_KEY}"
+  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating SPIRE server private key ${COLOR_BOLD}(RSA 2048)${COLOR_RESET} in PKCS#8 format..."
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "${SERVER_KEY}"
 
   echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating SPIRE server certificate signing request..."
   openssl req -new -key "${SERVER_KEY}" -out "${SERVER_CSR}" \
@@ -123,4 +123,3 @@ main() {
 }
 
 main "$@"
-
