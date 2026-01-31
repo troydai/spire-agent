@@ -99,6 +99,7 @@ pub async fn run() {
             socket_path,
             timeout,
             silent,
+            write,
             ..
         })) => {
             let timeout = match parse_duration(&timeout) {
@@ -109,7 +110,7 @@ pub async fn run() {
                 }
             };
 
-            if let Err(e) = fetch_x509(&socket_path, timeout, silent).await {
+            if let Err(e) = fetch_x509(&socket_path, timeout, silent, write.as_deref()).await {
                 eprintln!("Error: {e}");
                 std::process::exit(1);
             }

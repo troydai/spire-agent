@@ -1,10 +1,15 @@
-use std::time::{Duration, Instant};
+use std::{
+    fs,
+    path::Path,
+    time::{Duration, Instant},
+};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use const_oid::db::rfc5280::ID_CE_BASIC_CONSTRAINTS;
-use der::{Decode, Reader};
+use der::{Decode, Encode, Reader};
 use hyper_util::rt::TokioIo;
+use pem_rfc7468::LineEnding;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 use x509_cert::Certificate;
@@ -14,17 +19,24 @@ use crate::workload::{
     spiffe_workload_api_client::SpiffeWorkloadApiClient,
 };
 
-pub async fn fetch_x509(socket_path: &str, timeout: Duration, silent: bool) -> Result<()> {
+pub async fn fetch_x509(
+    socket_path: &str,
+    timeout: Duration,
+    silent: bool,
+    write_dir: Option<&str>,
+) -> Result<()> {
     let start = Instant::now();
     let mut client = connect_client(socket_path).await?;
     let resp = fetch_x509svid(&mut client, timeout).await?;
 
-    if silent {
-        return Ok(());
-    }
-
     let elapsed = start.elapsed();
-    print_svids(resp, elapsed)?;
+    let svids = resp.svids;
+    if !silent {
+        print_svids(&svids, elapsed)?;
+    }
+    if let Some(dir) = write_dir {
+        write_svids(&svids, dir, silent)?;
+    }
 
     Ok(())
 }
@@ -64,8 +76,7 @@ async fn fetch_x509svid(client: &mut Client, timeout: Duration) -> Result<X509sv
     Ok(resp)
 }
 
-fn print_svids(resp: X509svidResponse, elapsed: Duration) -> Result<()> {
-    let svids = resp.svids;
+fn print_svids(svids: &[X509svid], elapsed: Duration) -> Result<()> {
     println!(
         "Received {} svid after {:.6}ms\n",
         svids.len(),
@@ -77,6 +88,87 @@ fn print_svids(resp: X509svidResponse, elapsed: Duration) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn write_svids(svids: &[X509svid], write_dir: &str, silent: bool) -> Result<()> {
+    let dir = Path::new(write_dir);
+    if dir.exists() && !dir.is_dir() {
+        anyhow::bail!("write path is not a directory: {}", dir.display());
+    }
+    fs::create_dir_all(dir).context("failed to create output directory")?;
+
+    for (idx, svid) in svids.iter().enumerate() {
+        let svid_path = dir.join(format!("svid.{idx}.pem"));
+        let key_path = dir.join(format!("svid.{idx}.key"));
+        let bundle_path = dir.join(format!("bundle.{idx}.pem"));
+
+        let svid_pem = pem_cert_chain(&svid.x509_svid)?;
+        write_pem_file(&svid_path, &svid_pem, Some(0o644))?;
+        if !silent {
+            println!("Writing SVID #{} to file {}.", idx, svid_path.display());
+        }
+
+        let key_pem = pem_key(&svid.x509_svid_key)?;
+        write_pem_file(&key_path, &key_pem, Some(0o600))?;
+        if !silent {
+            println!("Writing key #{} to file {}.", idx, key_path.display());
+        }
+
+        let bundle_pem = pem_cert_chain(&svid.bundle)?;
+        write_pem_file(&bundle_path, &bundle_pem, Some(0o644))?;
+        if !silent {
+            println!("Writing bundle #{} to file {}.", idx, bundle_path.display());
+        }
+    }
+
+    Ok(())
+}
+
+fn pem_cert_chain(der_bytes: &[u8]) -> Result<String> {
+    let certs = parse_cert_chain(der_bytes)?;
+    let mut pem = String::new();
+    for cert in certs {
+        let der = cert.to_der().context("failed to encode certificate")?;
+        pem.push_str(&pem_single("CERTIFICATE", &der)?);
+    }
+    Ok(pem)
+}
+
+fn pem_single(label: &str, der_bytes: &[u8]) -> Result<String> {
+    pem_rfc7468::encode_string(label, LineEnding::LF, der_bytes)
+        .map_err(|err| anyhow!("failed to encode PEM data: {err}"))
+}
+
+fn pem_key(der_bytes: &[u8]) -> Result<String> {
+    pem_single("PRIVATE KEY", der_bytes)
+}
+
+fn write_pem_file(path: &Path, contents: &str, mode: Option<u32>) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+
+        let file_mode = mode.unwrap_or(0o644);
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .mode(file_mode)
+            .open(path)
+            .with_context(|| format!("failed to open {}", path.display()))?;
+        file.write_all(contents.as_bytes())
+            .with_context(|| format!("failed to write {}", path.display()))?;
+        return Ok(());
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::write(path, contents.as_bytes()).with_context(|| {
+            format!("failed to write {}", path.display())
+        })?;
+        Ok(())
+    }
 }
 
 fn print_svid(svid: &X509svid) -> Result<()> {

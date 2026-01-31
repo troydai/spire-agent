@@ -1266,6 +1266,7 @@ dependencies = [
  "const-oid",
  "der",
  "hyper-util",
+ "pem-rfc7468",
  "prost",
  "prost-types",
  "tokio",
