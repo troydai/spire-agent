@@ -26,11 +26,44 @@ pub async fn start_server(socket_path: &Path, rotation_interval: Duration) -> Re
     let service = MockWorkloadApi::with_rotation_interval(rotation_interval);
 
     Server::builder()
-        .add_service(SpiffeWorkloadApiServer::new(service))
+        .add_service(SpiffeWorkloadApiServer::with_interceptor(
+            service,
+            verify_security_header,
+        ))
         .serve_with_incoming(uds_stream)
         .await?;
 
     Ok(())
+}
+
+const SECURITY_HEADER_KEY: &str = "workload.spiffe.io";
+const SECURITY_HEADER_VALUE: &str = "true";
+
+fn verify_security_header(request: Request<()>) -> Result<Request<()>, Status> {
+    let values: Vec<_> = request
+        .metadata()
+        .get_all(SECURITY_HEADER_KEY)
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .collect();
+
+    if values.is_empty() {
+        return Err(Status::invalid_argument(
+            "security header missing from request",
+        ));
+    }
+
+    if values.len() > 1 {
+        return Err(Status::invalid_argument(
+            "security header duplicated in request",
+        ));
+    }
+
+    if values[0] != SECURITY_HEADER_VALUE {
+        return Err(Status::invalid_argument("security header invalid"));
+    }
+
+    Ok(request)
 }
 
 struct MockWorkloadApi {
