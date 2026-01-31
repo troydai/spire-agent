@@ -141,16 +141,31 @@ fn pem_single(label: &str, der_bytes: &[u8]) -> Result<String> {
 }
 
 fn write_pem_file(path: &Path, contents: &str, mode: Option<u32>) -> Result<()> {
-    fs::write(path, contents.as_bytes()).with_context(|| {
-        format!("failed to write {}", path.display())
-    })?;
     #[cfg(unix)]
-    if let Some(mode) = mode {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(path, fs::Permissions::from_mode(mode))
-            .with_context(|| format!("failed to set permissions on {}", path.display()))?;
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+
+        let file_mode = mode.unwrap_or(0o644);
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .mode(file_mode)
+            .open(path)
+            .with_context(|| format!("failed to open {}", path.display()))?;
+        file.write_all(contents.as_bytes())
+            .with_context(|| format!("failed to write {}", path.display()))?;
+        return Ok(());
     }
-    Ok(())
+
+    #[cfg(not(unix))]
+    {
+        fs::write(path, contents.as_bytes()).with_context(|| {
+            format!("failed to write {}", path.display())
+        })?;
+        Ok(())
+    }
 }
 
 fn print_svid(svid: &X509svid) -> Result<()> {
