@@ -59,3 +59,40 @@ The sandbox provides that. To test the implementation during development, the
 Rust SPIRE agent can be built and loaded into the spiffe-debug container of the
 httpbin pod and tested against the Go SPIRE agent.
 
+### Run spire-agent in spiffe-debug container
+
+Use the spiffe-debug container inside the httpbin pod to execute both the Rust
+and Go SPIRE agents against the mounted Workload API socket.
+
+Set kubeconfig:
+
+```bash
+KUBECONFIG=/Users/troydai/code/github.com/troydai/spire-agent/sandbox/artifacts/kubeconfig
+```
+
+Find the httpbin pod:
+
+```bash
+kubectl --kubeconfig "$KUBECONFIG" -n httpbin get pods -o wide
+```
+
+Confirm the socket path:
+
+```bash
+kubectl --kubeconfig "$KUBECONFIG" -n httpbin exec <POD> -c spiffe-debug -- \
+  ls -la /run/spire/sockets
+```
+
+Run the Rust SPIRE agent:
+
+```bash
+kubectl --kubeconfig "$KUBECONFIG" -n httpbin exec <POD> -c spiffe-debug -- \
+  /usr/local/bin/spire-agent-rust api fetch x509 --socket-path /run/spire/sockets/agent.sock
+```
+
+Run the Go SPIRE agent:
+
+```bash
+kubectl --kubeconfig "$KUBECONFIG" -n httpbin exec <POD> -c spiffe-debug -- \
+  /usr/local/bin/spire-agent-go api fetch x509 --socketPath /run/spire/sockets/agent.sock
+```
