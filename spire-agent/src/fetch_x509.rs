@@ -10,6 +10,7 @@ use const_oid::db::rfc5280::ID_CE_BASIC_CONSTRAINTS;
 use der::{Decode, Encode, Reader};
 use hyper_util::rt::TokioIo;
 use pem_rfc7468::LineEnding;
+use tonic::metadata::{MetadataKey, MetadataValue};
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 use x509_cert::Certificate;
@@ -60,7 +61,11 @@ async fn connect_client(socket_path: &str) -> Result<Client> {
 }
 
 async fn fetch_x509svid(client: &mut Client, timeout: Duration) -> Result<X509svidResponse> {
-    let request = tonic::Request::new(X509svidRequest {});
+    let mut request = tonic::Request::new(X509svidRequest {});
+    request.metadata_mut().insert(
+        MetadataKey::from_static("workload.spiffe.io"),
+        MetadataValue::from_static("true"),
+    );
     let response = tokio::time::timeout(timeout, client.fetch_x509svid(request))
         .await
         .context("request timed out")?
