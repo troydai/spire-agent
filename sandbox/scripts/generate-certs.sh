@@ -4,7 +4,21 @@ set -euo pipefail
 
 # Source color support
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/utility/colors.sh"
+COLOR_RESET=""
+COLOR_BOLD=""
+COLOR_RED=""
+COLOR_GREEN=""
+COLOR_YELLOW=""
+COLOR_BLUE=""
+COLOR_MAGENTA=""
+COLOR_CYAN=""
+COLOR_WHITE=""
+COLOR_BRIGHT_RED=""
+COLOR_BRIGHT_GREEN=""
+COLOR_BRIGHT_YELLOW=""
+COLOR_BRIGHT_BLUE=""
+COLOR_BRIGHT_MAGENTA=""
+COLOR_BRIGHT_CYAN=""
 
 info() {
   echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} $*"
