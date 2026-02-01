@@ -10,6 +10,11 @@ Use the Go spire-agent as a reference, compare its output to the Rust spire-agen
 ## Instructions
 
 When you start, look at the task section below. Find the first available task to accomplish. Whether a task has been accomplished is marked by its preceding checkbox.
+If all tasks are already checked, exit immediately without making any changes.
+
+Completion marker:
+- Create a file named `.codex_done` in the repository root when you finish the final task.
+- If `.codex_done` already exists, do nothing and exit.
 
 Execute the task in the following sequence:
 1. Understand the task's purpose.
@@ -28,3 +33,4 @@ Execute the task in the following sequence:
 - [ ] Implement the Rust spire-agent "api fetch" command. Test it against spire-agent-mock to ensure its output is the same as the Go spire-agent.
 - [ ] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
 - [ ] Create a PR from this feature branch to the main branch.
+- [ ] Create the `.codex_done` completion marker file in the repository root.
