@@ -18,7 +18,7 @@ while true; do
 
   echo "starting codex iteration"
   PROMPT_CONTENT="$(cat "${PROMPT_FILE}")"
-  codex -a untrusted "${PROMPT_CONTENT}"
+  codex -a never --sandbox workspace-write "${PROMPT_CONTENT}"
 
   if [[ -f "${DONE_FILE}" ]]; then
     echo "done marker created: ${DONE_FILE}"
