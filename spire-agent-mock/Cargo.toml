@@ -22,6 +22,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 rcgen = { version = "0.14", features = ["pem"] }
 time = "0.3"
 async-stream = "0.3"
+tonic-health = "0.14"
 
 [build-dependencies]
 tonic-prost-build = "0.14"

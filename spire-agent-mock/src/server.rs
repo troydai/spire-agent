@@ -8,6 +8,7 @@ use tokio_stream::wrappers::UnixListenerStream;
 use tokio_stream::Stream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
+use tonic_health::server::health_reporter;
 
 use crate::svid::{SvidConfig, SvidGenerator};
 use crate::workload;
@@ -24,8 +25,14 @@ pub async fn start_server(socket_path: &Path, rotation_interval: Duration) -> Re
     let uds = UnixListener::bind(socket_path)?;
     let uds_stream = UnixListenerStream::new(uds);
     let service = MockWorkloadApi::with_rotation_interval(rotation_interval);
+    let (health_reporter, health_service) = health_reporter();
+
+    health_reporter
+        .set_serving::<SpiffeWorkloadApiServer<MockWorkloadApi>>()
+        .await;
 
     Server::builder()
+        .add_service(health_service)
         .add_service(SpiffeWorkloadApiServer::with_interceptor(
             service,
             verify_security_header,
@@ -127,7 +134,29 @@ impl SpiffeWorkloadApi for MockWorkloadApi {
         _request: Request<X509BundlesRequest>,
     ) -> Result<Response<Self::FetchX509BundlesStream>, Status> {
         println!("Received FetchX509Bundles request");
-        Err(Status::unimplemented("not implemented"))
+
+        let trust_domain = self.svid_generator.trust_domain().to_string();
+        let bundle = self.svid_generator.bundle();
+        let rotation_interval = self.rotation_interval;
+
+        let stream = async_stream::stream! {
+            loop {
+                let response = X509BundlesResponse {
+                    crl: vec![],
+                    bundles: std::collections::HashMap::from_iter([(
+                        format!("spiffe://{}", trust_domain),
+                        bundle.clone(),
+                    )]),
+                };
+
+                println!("Sending X509Bundle for trust domain: {}", trust_domain);
+                yield Ok(response);
+
+                tokio::time::sleep(rotation_interval).await;
+            }
+        };
+
+        Ok(Response::new(Box::pin(stream)))
     }
 
     async fn fetch_jwtsvid(

@@ -21,7 +21,7 @@ Use the Go spire-agent as a reference, compare its output to the Rust spire-agen
 
 ## Steps
 
-- [ ] Update spire-agent-mock so that running the Go spire-agent "healthcheck" command against its workload API has the same output as running the Go spire-agent against the workload API in the sandbox. The purpose of this task is to provide a test harness for later tasks.
+- [x] Update spire-agent-mock so that running the Go spire-agent "healthcheck" command against its workload API has the same output as running the Go spire-agent against the workload API in the sandbox. The purpose of this task is to provide a test harness for later tasks.
 - [ ] Implement the Rust spire-agent "healthcheck" command. Test it against spire-agent-mock to ensure its output is the same as the Go spire-agent.
 - [ ] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
 - [ ] Create a PR from this feature branch to the main branch.
@@ -30,4 +30,3 @@ Use the Go spire-agent as a reference, compare its output to the Rust spire-agen
 
 - [How to run spire-agent in sandbox to compare](docs/sandbox_guide.md)
 - [SPIRE Go Source Code](https://github.com/spiffe/spire)
-
