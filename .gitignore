@@ -30,3 +30,4 @@ target
 # Temp
 /tmp
 .DS_Store
+.codex_done

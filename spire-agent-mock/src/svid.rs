@@ -13,12 +13,18 @@ pub struct SvidConfig {
     pub ttl_seconds: u32,
 }
 
+const DEFAULT_TRUST_DOMAIN: &str = "spiffe-helper.local";
+const DEFAULT_WORKLOAD_PATH: &str = "/ns/httpbin/sa/httpbin";
+const DEFAULT_TTL_SECONDS: u32 = 120;
+const DEFAULT_ROOT_CA_VALIDITY_DAYS: i64 = 3650;
+const DEFAULT_SPIRE_SERVER_CA_VALIDITY_DAYS: i64 = 365;
+
 impl Default for SvidConfig {
     fn default() -> Self {
         Self {
-            trust_domain: "example.org".to_string(),
-            workload_path: "/workload".to_string(),
-            ttl_seconds: 30,
+            trust_domain: DEFAULT_TRUST_DOMAIN.to_string(),
+            workload_path: DEFAULT_WORKLOAD_PATH.to_string(),
+            ttl_seconds: DEFAULT_TTL_SECONDS,
         }
     }
 }
@@ -59,10 +65,10 @@ impl SvidGenerator {
         params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
         params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
 
-        // Set validity period (1 year for root CA)
+        // Set validity period (10 years for root CA)
         let now = OffsetDateTime::now_utc();
         params.not_before = now;
-        params.not_after = now + Duration::days(365);
+        params.not_after = now + Duration::days(DEFAULT_ROOT_CA_VALIDITY_DAYS);
 
         // Add SPIFFE trust domain as URI SAN
         let trust_domain_uri = format!("spiffe://{}", trust_domain);
@@ -100,10 +106,10 @@ impl SvidGenerator {
         params.is_ca = IsCa::Ca(BasicConstraints::Constrained(0));
         params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
 
-        // Set validity period (1 month for SPIRE Server signing CA)
+        // Set validity period (1 year for SPIRE Server signing CA)
         let now = OffsetDateTime::now_utc();
         params.not_before = now;
-        params.not_after = now + Duration::days(30);
+        params.not_after = now + Duration::days(DEFAULT_SPIRE_SERVER_CA_VALIDITY_DAYS);
 
         // Add SPIFFE trust domain as URI SAN
         let trust_domain_uri = format!("spiffe://{}", trust_domain);
@@ -190,7 +196,10 @@ mod tests {
         let generator = SvidGenerator::new(config);
         let svid = generator.generate_svid();
 
-        assert_eq!(svid.spiffe_id, "spiffe://example.org/workload");
+        assert_eq!(
+            svid.spiffe_id,
+            "spiffe://spiffe-helper.local/ns/httpbin/sa/httpbin"
+        );
         assert!(!svid.x509_svid.is_empty());
         assert!(!svid.x509_svid_key.is_empty());
         assert!(!svid.bundle.is_empty());
@@ -218,6 +227,14 @@ mod tests {
         }
 
         assert!(result.is_ok(), "Failed to parse SVID: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_default_config_values() {
+        let config = SvidConfig::default();
+        assert_eq!(config.trust_domain, DEFAULT_TRUST_DOMAIN);
+        assert_eq!(config.workload_path, DEFAULT_WORKLOAD_PATH);
+        assert_eq!(config.ttl_seconds, DEFAULT_TTL_SECONDS);
     }
 
     #[test]

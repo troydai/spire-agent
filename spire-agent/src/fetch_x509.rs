@@ -98,9 +98,9 @@ async fn fetch_x509svid(client: &mut Client, timeout: Duration) -> Result<X509sv
 
 fn print_svids(svids: &[X509svid], elapsed: Duration) -> Result<()> {
     println!(
-        "Received {} svid after {:.6}ms\n",
+        "Received {} svid after {}\n",
         svids.len(),
-        elapsed.as_secs_f64() * 1000.0
+        format_duration_seconds(elapsed)
     );
 
     for svid in svids {
@@ -291,9 +291,28 @@ fn format_utc_time(time: DateTime<Utc>) -> String {
     time.format("%Y-%m-%d %H:%M:%S +0000 UTC").to_string()
 }
 
+fn format_duration_seconds(duration: Duration) -> String {
+    if duration.is_zero() {
+        return "0s".to_string();
+    }
+
+    let seconds = duration.as_secs_f64();
+    let mut out = format!("{seconds:.2}");
+    while out.ends_with('0') {
+        out.pop();
+    }
+    if out.ends_with('.') {
+        out.pop();
+    }
+    out.push('s');
+    out
+}
+
 #[cfg(test)]
 mod tests {
-    use super::parse_cert_chain;
+    use std::time::Duration;
+
+    use super::{format_duration_seconds, parse_cert_chain};
 
     const CERT1_DER: &[u8] = &[
         0x30, 0x82, 0x02, 0x9c, 0x30, 0x82, 0x01, 0x84, 0x02, 0x09, 0x00, 0xb5, 0x4c, 0x0d, 0x2d,
@@ -398,5 +417,20 @@ mod tests {
 
         let certs = parse_cert_chain(&chain).expect("valid chain");
         assert_eq!(certs.len(), 2);
+    }
+
+    #[test]
+    fn format_duration_seconds_normalizes_to_seconds() {
+        assert_eq!(format_duration_seconds(Duration::ZERO), "0s");
+        assert_eq!(format_duration_seconds(Duration::from_nanos(1)), "0s");
+        assert_eq!(
+            format_duration_seconds(Duration::from_millis(123)),
+            "0.12s"
+        );
+        assert_eq!(
+            format_duration_seconds(Duration::from_secs(1) + Duration::from_millis(234)),
+            "1.23s"
+        );
+        assert_eq!(format_duration_seconds(Duration::from_secs(60)), "60s");
     }
 }
