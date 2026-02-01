@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 
 use crate::fetch_x509::fetch_x509;
+use crate::healthcheck::healthcheck;
 
 #[derive(Parser)]
 #[command(name = "spire-agent", version, about = "Agent CLI for Spire")]
@@ -15,6 +16,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Api(ApiArgs),
+    Healthcheck(HealthcheckArgs),
 }
 
 #[derive(Parser)]
@@ -54,6 +56,22 @@ struct ApiArgs {
     write: Option<String>,
     #[command(subcommand)]
     command: ApiCommand,
+}
+
+#[derive(Parser)]
+struct HealthcheckArgs {
+    #[arg(long = "shallow", help = "Perform a less stringent health check")]
+    shallow: bool,
+    #[arg(
+        long = "socket-path",
+        alias = "socketPath",
+        value_name = "string",
+        default_value = "/tmp/spire-agent/public/api.sock",
+        help = "Path to the SPIRE Agent API socket (default \"/tmp/spire-agent/public/api.sock\")"
+    )]
+    socket_path: String,
+    #[arg(long = "verbose", help = "Print verbose information")]
+    verbose: bool,
 }
 
 #[derive(Subcommand)]
@@ -143,6 +161,16 @@ pub async fn run() {
             ..
         })) => {
             // Intentionally no-op for now.
+        }
+        Some(Commands::Healthcheck(HealthcheckArgs {
+            shallow,
+            socket_path,
+            verbose,
+        })) => {
+            if let Err(e) = healthcheck(&socket_path, shallow, verbose).await {
+                eprintln!("Error: {e}");
+                std::process::exit(1);
+            }
         }
         None => {
             if let Err(err) = Cli::command().print_long_help() {

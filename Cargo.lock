@@ -1271,6 +1271,7 @@ dependencies = [
  "prost-types",
  "tokio",
  "tonic",
+ "tonic-health",
  "tonic-prost",
  "tonic-prost-build",
  "tower",
