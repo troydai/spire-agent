@@ -30,7 +30,8 @@ Only the Goal and Steps sections are required.
 
 ### Step Execution Framework
 
-Execute one step per session, then exit:
+Execute one step per session, then exit (iteration complete does **not** imply
+all steps are complete):
 
 1. Read the manifest and select the first incomplete step.
 2. Review references/tools as needed.
@@ -39,6 +40,7 @@ Execute one step per session, then exit:
 5. Run any necessary manual checks.
 6. Mark the step `[x]` in the manifest.
 7. Commit changes (and push if the branch has a remote).
+8. If more steps remain, exit so the next session can pick up the next step.
 
 ### Logistical steps
 
@@ -56,10 +58,17 @@ Exit early if:
 - There are no more steps to execute.
 - The current step cannot be fulfilled for technical reasons.
 
-Before exit:
+Before any exit:
 
-- Create `.agent_iteration_done` in the repository root.
+- Create `.agent_iteration_done` in the repository root to mark the *iteration*
+  completion, not overall task completion.
+- If more steps remain, add a short note such as `remaining_steps: true`.
 - If exiting due to an unfulfillable step, record the reason in the file.
+
+When all steps are complete:
+
+- Still create `.agent_iteration_done`, but include a note like
+  `remaining_steps: false` to avoid ambiguity for orchestrators.
 
 ### Example Task Manifest
 
