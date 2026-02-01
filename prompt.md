@@ -34,4 +34,4 @@ Execute the task in the following sequence:
 - [x] Implement the Rust spire-agent "api fetch" command. Test it against spire-agent-mock to ensure its output is the same as the Go spire-agent.
 - [x] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
 - [ ] Create a PR from this feature branch to the main branch.
-- [ ] Create the `.codex_done` completion marker file in the repository root.
+- [x] Create the `.codex_done` completion marker file in the repository root.
