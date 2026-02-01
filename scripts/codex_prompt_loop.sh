@@ -17,8 +17,7 @@ while true; do
   fi
 
   echo "starting codex iteration"
-  PROMPT_CONTENT="$(cat "${PROMPT_FILE}")"
-  codex -a never --sandbox workspace-write "${PROMPT_CONTENT}"
+  codex exec -s workspace-write -c ask_for_approval="never" -C "${REPO_ROOT}" - < "${PROMPT_FILE}"
 
   if [[ -f "${DONE_FILE}" ]]; then
     echo "done marker created: ${DONE_FILE}"
