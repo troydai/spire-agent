@@ -7,17 +7,12 @@ use std::{
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use der::{Encode, Reader};
-use hyper_util::rt::TokioIo;
 use pem_rfc7468::LineEnding;
-use tonic::metadata::MetadataValue;
-use tonic::Status;
-use tonic::transport::{Channel, Endpoint, Uri};
-use tower::service_fn;
 use x509_cert::Certificate;
 
+use crate::rpc::{WorkloadClient, connect_workload_client};
 use crate::workload::{
     X509svid, X509svidRequest, X509svidResponse,
-    spiffe_workload_api_client::SpiffeWorkloadApiClient,
 };
 
 pub async fn fetch_x509(
@@ -27,7 +22,7 @@ pub async fn fetch_x509(
     write_dir: Option<&str>,
 ) -> Result<()> {
     let start = Instant::now();
-    let mut client = connect_client(socket_path).await?;
+    let mut client = connect_workload_client(socket_path).await?;
     let resp = fetch_x509svid(&mut client, timeout).await?;
 
     let elapsed = start.elapsed();
@@ -42,44 +37,10 @@ pub async fn fetch_x509(
     Ok(())
 }
 
-type Client = SpiffeWorkloadApiClient<
-    tonic::service::interceptor::InterceptedService<
-        Channel,
-        fn(tonic::Request<()>) -> Result<tonic::Request<()>, Status>,
-    >,
->;
-
-const SECURITY_HEADER_KEY: &str = "workload.spiffe.io";
-const SECURITY_HEADER_VALUE: &str = "true";
-
-async fn connect_client(socket_path: &str) -> Result<Client> {
-    let socket_path = socket_path.to_string();
-    let channel = Endpoint::try_from("http://[::]:50051")?
-        .connect_with_connector(service_fn(move |_: Uri| {
-            let path = socket_path.clone();
-            async move {
-                let stream = tokio::net::UnixStream::connect(path).await?;
-                Ok::<_, std::io::Error>(TokioIo::new(stream))
-            }
-        }))
-        .await
-        .context("failed to connect to socket")?;
-
-    Ok(SpiffeWorkloadApiClient::with_interceptor(
-        channel,
-        add_security_header,
-    ))
-}
-
-fn add_security_header(mut request: tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
-    request.metadata_mut().insert(
-        SECURITY_HEADER_KEY,
-        MetadataValue::from_static(SECURITY_HEADER_VALUE),
-    );
-    Ok(request)
-}
-
-async fn fetch_x509svid(client: &mut Client, timeout: Duration) -> Result<X509svidResponse> {
+async fn fetch_x509svid(
+    client: &mut WorkloadClient,
+    timeout: Duration,
+) -> Result<X509svidResponse> {
     let request = tonic::Request::new(X509svidRequest {});
     let response = tokio::time::timeout(timeout, client.fetch_x509svid(request))
         .await
