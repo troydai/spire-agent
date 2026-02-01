@@ -98,9 +98,9 @@ async fn fetch_x509svid(client: &mut Client, timeout: Duration) -> Result<X509sv
 
 fn print_svids(svids: &[X509svid], elapsed: Duration) -> Result<()> {
     println!(
-        "Received {} svid after {:.6}ms\n",
+        "Received {} svid after {}\n",
         svids.len(),
-        elapsed.as_secs_f64() * 1000.0
+        format_duration_go(elapsed)
     );
 
     for svid in svids {
@@ -291,9 +291,71 @@ fn format_utc_time(time: DateTime<Utc>) -> String {
     time.format("%Y-%m-%d %H:%M:%S +0000 UTC").to_string()
 }
 
+fn format_duration_go(duration: Duration) -> String {
+    if duration.is_zero() {
+        return "0s".to_string();
+    }
+
+    let nanos = duration.as_nanos();
+    if nanos < 1_000 {
+        return format!("{nanos}ns");
+    }
+    if nanos < 1_000_000 {
+        return format_subsec(nanos, 1_000, "µs");
+    }
+    if nanos < 1_000_000_000 {
+        return format_subsec(nanos, 1_000_000, "ms");
+    }
+
+    let mut seconds = (nanos / 1_000_000_000) as u64;
+    let remainder = (nanos % 1_000_000_000) as u32;
+    let mut out = String::new();
+
+    if seconds >= 3_600 {
+        let hours = seconds / 3_600;
+        seconds %= 3_600;
+        out.push_str(&format!("{hours}h"));
+    }
+    if seconds >= 60 {
+        let minutes = seconds / 60;
+        seconds %= 60;
+        out.push_str(&format!("{minutes}m"));
+    }
+
+    if remainder == 0 {
+        out.push_str(&format!("{seconds}s"));
+        return out;
+    }
+
+    let mut frac = format!("{remainder:09}");
+    while frac.ends_with('0') {
+        frac.pop();
+    }
+    out.push_str(&format!("{seconds}.{frac}s"));
+    out
+}
+
+fn format_subsec(nanos: u128, unit: u128, suffix: &str) -> String {
+    let whole = nanos / unit;
+    let rem = nanos % unit;
+    if rem == 0 {
+        return format!("{whole}{suffix}");
+    }
+
+    let frac_unit = unit / 1_000;
+    let frac = (rem / frac_unit) as u32;
+    let mut frac_str = format!("{frac:03}");
+    while frac_str.ends_with('0') {
+        frac_str.pop();
+    }
+    format!("{whole}.{frac_str}{suffix}")
+}
+
 #[cfg(test)]
 mod tests {
-    use super::parse_cert_chain;
+    use std::time::Duration;
+
+    use super::{format_duration_go, parse_cert_chain};
 
     const CERT1_DER: &[u8] = &[
         0x30, 0x82, 0x02, 0x9c, 0x30, 0x82, 0x01, 0x84, 0x02, 0x09, 0x00, 0xb5, 0x4c, 0x0d, 0x2d,
@@ -398,5 +460,18 @@ mod tests {
 
         let certs = parse_cert_chain(&chain).expect("valid chain");
         assert_eq!(certs.len(), 2);
+    }
+
+    #[test]
+    fn format_duration_go_matches_go_style() {
+        assert_eq!(format_duration_go(Duration::ZERO), "0s");
+        assert_eq!(format_duration_go(Duration::from_nanos(1)), "1ns");
+        assert_eq!(format_duration_go(Duration::from_micros(1)), "1µs");
+        assert_eq!(format_duration_go(Duration::from_micros(1500)), "1.5ms");
+        assert_eq!(
+            format_duration_go(Duration::from_secs(1) + Duration::from_millis(2)),
+            "1.002s"
+        );
+        assert_eq!(format_duration_go(Duration::from_secs(60)), "1m0s");
     }
 }
