@@ -32,6 +32,6 @@ Execute the task in the following sequence:
 
 - [x] Update spire-agent-mock so that running the Go spire-agent "api fetch" command against its workload API has the same output as running the Go spire-agent against the workload API in the sandbox. The purpose of this task is to provide a test harness for later tasks.
 - [x] Implement the Rust spire-agent "api fetch" command. Test it against spire-agent-mock to ensure its output is the same as the Go spire-agent.
-- [ ] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
+- [x] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
 - [ ] Create a PR from this feature branch to the main branch.
 - [ ] Create the `.codex_done` completion marker file in the repository root.
