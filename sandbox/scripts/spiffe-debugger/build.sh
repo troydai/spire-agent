@@ -3,7 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${ROOT_DIR:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
-SANDBOX_DIR="${SANDBOX_DIR:-${ROOT_DIR}/sandbox}"
+# If invoked from sandbox with ROOT_DIR pointing at the sandbox dir, correct it.
+if [ "$(basename "${ROOT_DIR}")" = "sandbox" ]; then
+	ROOT_DIR="$(cd "${ROOT_DIR}/.." && pwd)"
+	SANDBOX_DIR="${SANDBOX_DIR:-$(cd "${ROOT_DIR}/sandbox" && pwd)}"
+else
+	SANDBOX_DIR="${SANDBOX_DIR:-${ROOT_DIR}/sandbox}"
+fi
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-spiffe-helper}"
 KIND_BIN="${KIND:-kind}"
 DOCKER_BIN="${DOCKER:-docker}"
