@@ -30,7 +30,7 @@ Only the Goal and Steps sections are required.
 
 ### Step Execution Framework
 
-Execute one step per session, then exit:
+Execute one step per session, then exit.
 
 1. Read the manifest and select the first incomplete step.
 2. Review references/tools as needed.
@@ -39,6 +39,9 @@ Execute one step per session, then exit:
 5. Run any necessary manual checks.
 6. Mark the step `[x]` in the manifest.
 7. Commit changes (and push if the branch has a remote).
+
+Note: exiting the current session only means the current step is done. The task
+is complete only when no steps remain.
 
 ### Logistical steps
 
@@ -49,17 +52,25 @@ The manifest may define logistical steps (concrete tasks) such as:
 
 For these steps, execute directly without the full framework.
 
-### Early exit
+### Task exit criteria
 
-Exit early if:
+If there are no more steps to accomplish, create `.agent_iteration_done`
+in the repository root to mark task completion. Include the following
+content in the file:
+```toml
+manifest = "path_to_task_manifest"
+remaining_steps = false
+```
 
-- There are no more steps to execute.
-- The current step cannot be fulfilled for technical reasons.
-
-Before exit:
-
-- Create `.agent_iteration_done` in the repository root.
-- If exiting due to an unfulfillable step, record the reason in the file.
+If the current step cannot be fulfilled for technical reasons and the
+entire task execution should be suspended, create `.agent_iteration_done`
+in the repository root to mark suspension. Include the following
+content in the file:
+```toml
+manifest = "path_to_task_manifest"
+remaining_steps = true
+suspend_reason = "reason_for_suspension"
+```
 
 ### Example Task Manifest
 
