@@ -17,7 +17,7 @@ while true; do
   fi
 
   echo "starting codex iteration"
-  codex -p --approval-mode full "${PROMPT_FILE}"
+  codex -p -a untrusted "${PROMPT_FILE}"
 
   if [[ -f "${DONE_FILE}" ]]; then
     echo "done marker created: ${DONE_FILE}"
