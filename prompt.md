@@ -25,7 +25,8 @@ Execute the task in the following sequence:
 6. Test it against unit tests, spire-agent-mock, and the sandbox.
 7. Run the pre-commit hook and fix issues.
 8. Update this file to check off the accomplished task.
-9. Stop after updating the checkbox.
+9. Commit the change with a comprehensive git commit description and a concise title 
+10. Exit the session.
 
 ## Tasks
 
