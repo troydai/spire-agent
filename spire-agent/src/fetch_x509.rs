@@ -65,7 +65,7 @@ fn print_svids(svids: &[X509svid], elapsed: Duration) -> Result<()> {
     );
 
     for svid in svids {
-        print_svid(&svid)?;
+        print_svid(svid)?;
     }
 
     Ok(())
@@ -140,7 +140,7 @@ fn write_pem_file(path: &Path, contents: &str, mode: Option<u32>) -> Result<()> 
             .with_context(|| format!("failed to open {}", path.display()))?;
         file.write_all(contents.as_bytes())
             .with_context(|| format!("failed to write {}", path.display()))?;
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(unix))]

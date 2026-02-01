@@ -113,7 +113,7 @@ fn split_duration(s: &str) -> Result<(u64, &str)> {
 
     let split_idx = s
         .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or_else(|| s.len());
+        .unwrap_or(s.len());
     let (value_str, unit) = s.split_at(split_idx);
     if value_str.is_empty() {
         anyhow::bail!("invalid duration");
