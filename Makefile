@@ -125,7 +125,9 @@ undeploy-httpbin:
 	@ROOT_DIR="$(SANDBOX_DIR)" KUBECONFIG_PATH="$(KUBECONFIG_PATH)" $(SCRIPTS_DIR)/httpbin/undeploy.sh
 
 .PHONY: env-up
-env-up: tools certs cluster-up deploy-spire-server deploy-spire-agent deploy-spire-csi deploy-registration deploy-httpbin
+env-up: tools certs cluster-up deploy-spire-server deploy-spire-agent deploy-spire-csi deploy-registration
+	@$(MAKE) build-spiffe-debug
+	@$(MAKE) deploy-httpbin
 	@echo "[env-up] Environment setup complete!"
 
 .PHONY: env-down
