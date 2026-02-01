@@ -16,7 +16,7 @@ struct Args {
     #[arg(short, long, default_value = "/tmp/agent.sock")]
     socket_path: PathBuf,
     /// X.509 SVID rotation interval in seconds
-    #[arg(long = "x509-internal", default_value_t = 30)]
+    #[arg(long = "x509-internal", default_value_t = 60)]
     x509_rotation_interval_seconds: u64,
 }
 
