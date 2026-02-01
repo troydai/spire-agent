@@ -17,7 +17,8 @@ while true; do
   fi
 
   echo "starting codex iteration"
-  codex -p -a untrusted "${PROMPT_FILE}"
+  PROMPT_CONTENT="$(cat "${PROMPT_FILE}")"
+  codex -a untrusted "${PROMPT_CONTENT}"
 
   if [[ -f "${DONE_FILE}" ]]; then
     echo "done marker created: ${DONE_FILE}"
