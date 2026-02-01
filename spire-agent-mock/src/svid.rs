@@ -184,6 +184,14 @@ impl SvidGenerator {
             hint: String::new(),
         }
     }
+
+    pub fn trust_domain(&self) -> &str {
+        &self.config.trust_domain
+    }
+
+    pub fn bundle(&self) -> Vec<u8> {
+        self.root_cert_der.clone()
+    }
 }
 
 #[cfg(test)]

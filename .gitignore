@@ -30,4 +30,6 @@ target
 # Temp
 /tmp
 .DS_Store
-.codex_done
+
+# Cross session iteractive skill coordination
+.agent_iteration_done
