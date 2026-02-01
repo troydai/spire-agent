@@ -2,30 +2,14 @@
 # Generates CA and SPIRE server certificates for the local development environment.
 set -euo pipefail
 
-# Source color support
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COLOR_RESET=""
-COLOR_BOLD=""
-COLOR_RED=""
-COLOR_GREEN=""
-COLOR_YELLOW=""
-COLOR_BLUE=""
-COLOR_MAGENTA=""
-COLOR_CYAN=""
-COLOR_WHITE=""
-COLOR_BRIGHT_RED=""
-COLOR_BRIGHT_GREEN=""
-COLOR_BRIGHT_YELLOW=""
-COLOR_BRIGHT_BLUE=""
-COLOR_BRIGHT_MAGENTA=""
-COLOR_BRIGHT_CYAN=""
 
 info() {
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} $*"
+  echo -e "[certs] $*"
 }
 
 error() {
-  echo -e "${COLOR_RED}[certs]${COLOR_RESET} $*" >&2
+  echo -e "[certs] $*" >&2
 }
 
 # Default values
@@ -57,37 +41,37 @@ file_exists() {
 # Function to generate CA certificate and key
 generate_ca() {
   if [[ "${FORCE}" -eq 0 ]] && file_exists "${CA_KEY}" && file_exists "${CA_CERT}"; then
-    echo -e "${COLOR_YELLOW}[certs]${COLOR_RESET} CA certificate and key already exist, skipping generation"
+    echo -e "[certs] CA certificate and key already exist, skipping generation"
     return 0
   fi
 
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating CA private key ${COLOR_BOLD}(RSA 4096)${COLOR_RESET} in PKCS#8 format..."
+  echo -e "[certs] Generating CA private key (RSA 4096) in PKCS#8 format..."
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out "${CA_KEY}"
 
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating CA certificate..."
+  echo -e "[certs] Generating CA certificate..."
   openssl req -new -x509 -days 3650 -key "${CA_KEY}" -out "${CA_CERT}" \
     -subj "/CN=spiffe-helper-sandbox-ca" \
     -addext "basicConstraints=critical,CA:TRUE" \
     -addext "keyUsage=critical,keyCertSign,cRLSign"
 
-  echo -e "${COLOR_GREEN}✓${COLOR_RESET} CA certificate and key generated successfully"
+  echo -e "✓ CA certificate and key generated successfully"
 }
 
 # Function to generate SPIRE server certificate and key
 generate_spire_server() {
   if [[ "${FORCE}" -eq 0 ]] && file_exists "${SERVER_KEY}" && file_exists "${SERVER_CERT}"; then
-    echo -e "${COLOR_YELLOW}[certs]${COLOR_RESET} SPIRE server certificate and key already exist, skipping generation"
+    echo -e "[certs] SPIRE server certificate and key already exist, skipping generation"
     return 0
   fi
 
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating SPIRE server private key ${COLOR_BOLD}(RSA 2048)${COLOR_RESET} in PKCS#8 format..."
+  echo -e "[certs] Generating SPIRE server private key (RSA 2048) in PKCS#8 format..."
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "${SERVER_KEY}"
 
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating SPIRE server certificate signing request..."
+  echo -e "[certs] Generating SPIRE server certificate signing request..."
   openssl req -new -key "${SERVER_KEY}" -out "${SERVER_CSR}" \
     -subj "/CN=spiffe-helper-sandbox-spire-server"
 
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating SPIRE server certificate ${COLOR_BOLD}(signed by CA)${COLOR_RESET}..."
+  echo -e "[certs] Generating SPIRE server certificate (signed by CA)..."
   openssl x509 -req -in "${SERVER_CSR}" -CA "${CA_CERT}" -CAkey "${CA_KEY}" \
     -CAcreateserial -out "${SERVER_CERT}" -days 365 \
     -extensions v3_server -extfile <(
@@ -98,13 +82,13 @@ generate_spire_server() {
       echo "subjectAltName=DNS:spire-server,DNS:spire-server.default.svc.cluster.local,DNS:spire-server.spire-server.svc.cluster.local"
     )
 
-  echo -e "${COLOR_GREEN}✓${COLOR_RESET} SPIRE server certificate and key generated successfully"
+  echo -e "✓ SPIRE server certificate and key generated successfully"
 }
 
 # Function to generate bootstrap bundle
 generate_bootstrap_bundle() {
   if [[ "${FORCE}" -eq 0 ]] && file_exists "${BOOTSTRAP_BUNDLE}"; then
-    echo -e "${COLOR_YELLOW}[certs]${COLOR_RESET} Bootstrap bundle already exists, skipping generation"
+    echo -e "[certs] Bootstrap bundle already exists, skipping generation"
     return 0
   fi
 
@@ -113,27 +97,27 @@ generate_bootstrap_bundle() {
     exit 1
   fi
 
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generating bootstrap bundle..."
+  echo -e "[certs] Generating bootstrap bundle..."
   cp "${CA_CERT}" "${BOOTSTRAP_BUNDLE}"
 
-  echo -e "${COLOR_GREEN}✓${COLOR_RESET} Bootstrap bundle generated successfully"
+  echo -e "✓ Bootstrap bundle generated successfully"
 }
 
 main() {
-  echo -e "${COLOR_BRIGHT_BLUE}[certs]${COLOR_RESET} ${COLOR_BOLD}Starting certificate generation...${COLOR_RESET}"
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Output directory: ${COLOR_BOLD}${CERT_DIR}${COLOR_RESET}"
+  echo -e "[certs] Starting certificate generation..."
+  echo -e "[certs] Output directory: ${CERT_DIR}"
 
   generate_ca
   generate_spire_server
   generate_bootstrap_bundle
 
   echo ""
-  echo -e "${COLOR_BRIGHT_GREEN}[certs]${COLOR_RESET} ${COLOR_BOLD}Certificate generation complete!${COLOR_RESET}"
+  echo -e "[certs] Certificate generation complete!"
   echo ""
-  echo -e "${COLOR_CYAN}[certs]${COLOR_RESET} Generated files:"
-  echo -e "  ${COLOR_GREEN}✓${COLOR_RESET} CA: ${COLOR_CYAN}${CA_KEY}${COLOR_RESET}, ${COLOR_CYAN}${CA_CERT}${COLOR_RESET}"
-  echo -e "  ${COLOR_GREEN}✓${COLOR_RESET} SPIRE Server: ${COLOR_CYAN}${SERVER_KEY}${COLOR_RESET}, ${COLOR_CYAN}${SERVER_CERT}${COLOR_RESET}, ${COLOR_CYAN}${SERVER_CSR}${COLOR_RESET}"
-  echo -e "  ${COLOR_GREEN}✓${COLOR_RESET} Bootstrap Bundle: ${COLOR_CYAN}${BOOTSTRAP_BUNDLE}${COLOR_RESET}"
+  echo -e "[certs] Generated files:"
+  echo -e " ✓ CA: ${CA_KEY}, ${CA_CERT}"
+  echo -e " ✓ SPIRE Server: ${SERVER_KEY}, ${SERVER_CERT}, ${SERVER_CSR}"
+  echo -e " ✓ Bootstrap Bundle: ${BOOTSTRAP_BUNDLE}"
 }
 
 main "$@"

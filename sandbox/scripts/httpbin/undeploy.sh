@@ -2,43 +2,27 @@
 # Removes the httpbin service and its associated resources from the cluster.
 set -euo pipefail
 
-# Source color support
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COLOR_RESET=""
-COLOR_BOLD=""
-COLOR_RED=""
-COLOR_GREEN=""
-COLOR_YELLOW=""
-COLOR_BLUE=""
-COLOR_MAGENTA=""
-COLOR_CYAN=""
-COLOR_WHITE=""
-COLOR_BRIGHT_RED=""
-COLOR_BRIGHT_GREEN=""
-COLOR_BRIGHT_YELLOW=""
-COLOR_BRIGHT_BLUE=""
-COLOR_BRIGHT_MAGENTA=""
-COLOR_BRIGHT_CYAN=""
 
 ROOT_DIR="${ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 KUBECONFIG_PATH="${KUBECONFIG_PATH:-${ROOT_DIR}/artifacts/kubeconfig}"
 
 export KUBECONFIG="${KUBECONFIG_PATH}"
 
-echo -e "${COLOR_BRIGHT_BLUE}[undeploy]${COLOR_RESET} ${COLOR_BOLD}Removing httpbin service...${COLOR_RESET}"
+echo -e "[undeploy] Removing httpbin service..."
 if kubectl get namespace httpbin > /dev/null 2>&1; then
-	echo -e "${COLOR_CYAN}[undeploy]${COLOR_RESET} Deleting Deployment..."
+	echo -e "[undeploy] Deleting Deployment..."
 	kubectl delete deployment httpbin -n httpbin --ignore-not-found=true
-	echo -e "${COLOR_CYAN}[undeploy]${COLOR_RESET} Deleting Service..."
+	echo -e "[undeploy] Deleting Service..."
 	kubectl delete service httpbin -n httpbin --ignore-not-found=true
-	echo -e "${COLOR_CYAN}[undeploy]${COLOR_RESET} Deleting ConfigMap..."
+	echo -e "[undeploy] Deleting ConfigMap..."
 	kubectl delete configmap spiffe-helper-config -n httpbin --ignore-not-found=true
-	echo -e "${COLOR_CYAN}[undeploy]${COLOR_RESET} Deleting ServiceAccount..."
+	echo -e "[undeploy] Deleting ServiceAccount..."
 	kubectl delete serviceaccount httpbin -n httpbin --ignore-not-found=true
-	echo -e "${COLOR_CYAN}[undeploy]${COLOR_RESET} Deleting namespace..."
+	echo -e "[undeploy] Deleting namespace..."
 	kubectl delete namespace httpbin --ignore-not-found=true
 	echo ""
-	echo -e "${COLOR_BRIGHT_GREEN}[undeploy]${COLOR_RESET} ${COLOR_BOLD}httpbin removed successfully!${COLOR_RESET}"
+	echo -e "[undeploy] httpbin removed successfully!"
 else
-	echo -e "${COLOR_YELLOW}[undeploy]${COLOR_RESET} Namespace '${COLOR_BOLD}httpbin${COLOR_RESET}' does not exist. Nothing to remove."
+	echo -e "[undeploy] Namespace 'httpbin' does not exist. Nothing to remove."
 fi
