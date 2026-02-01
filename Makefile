@@ -8,6 +8,7 @@ ARTIFACTS_DIR := $(SANDBOX_DIR)/artifacts
 KUBECONFIG_PATH := $(ARTIFACTS_DIR)/kubeconfig
 CERT_DIR := $(ARTIFACTS_DIR)/certs
 KUBECTL := KUBECONFIG="$(KUBECONFIG_PATH)" kubectl
+DOCKER ?= docker
 
 .PHONY: tools
 tools:
@@ -111,12 +112,22 @@ undeploy-spire-csi:
 deploy-httpbin: check-cluster
 	@ROOT_DIR="$(SANDBOX_DIR)" KUBECONFIG_PATH="$(KUBECONFIG_PATH)" $(SCRIPTS_DIR)/httpbin/deploy.sh
 
+.PHONY: build-spiffe-debug
+build-spiffe-debug: check-cluster
+	@ROOT_DIR="$(ROOT_DIR)" SANDBOX_DIR="$(SANDBOX_DIR)" KIND_CLUSTER_NAME="$(KIND_CLUSTER_NAME)" KIND="$(KIND)" DOCKER="$(DOCKER)" $(SCRIPTS_DIR)/spiffe-debugger/build.sh
+
+.PHONY: redeploy-httpbin
+redeploy-httpbin: build-spiffe-debug check-cluster
+	@ROOT_DIR="$(SANDBOX_DIR)" KUBECONFIG_PATH="$(KUBECONFIG_PATH)" $(SCRIPTS_DIR)/httpbin/redeploy.sh
+
 .PHONY: undeploy-httpbin
 undeploy-httpbin:
 	@ROOT_DIR="$(SANDBOX_DIR)" KUBECONFIG_PATH="$(KUBECONFIG_PATH)" $(SCRIPTS_DIR)/httpbin/undeploy.sh
 
 .PHONY: env-up
-env-up: tools certs cluster-up deploy-spire-server deploy-spire-agent deploy-spire-csi deploy-registration deploy-httpbin
+env-up: tools certs cluster-up deploy-spire-server deploy-spire-agent deploy-spire-csi deploy-registration
+	@$(MAKE) build-spiffe-debug
+	@$(MAKE) deploy-httpbin
 	@echo "[env-up] Environment setup complete!"
 
 .PHONY: env-down
