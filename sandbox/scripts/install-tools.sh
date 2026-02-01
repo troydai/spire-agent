@@ -2,30 +2,14 @@
 # Checks for and provides installation instructions for required development tools like kind, kubectl, and openssl.
 set -euo pipefail
 
-# Source color support
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COLOR_RESET=""
-COLOR_BOLD=""
-COLOR_RED=""
-COLOR_GREEN=""
-COLOR_YELLOW=""
-COLOR_BLUE=""
-COLOR_MAGENTA=""
-COLOR_CYAN=""
-COLOR_WHITE=""
-COLOR_BRIGHT_RED=""
-COLOR_BRIGHT_GREEN=""
-COLOR_BRIGHT_YELLOW=""
-COLOR_BRIGHT_BLUE=""
-COLOR_BRIGHT_MAGENTA=""
-COLOR_BRIGHT_CYAN=""
 
 info() {
-  echo -e "${COLOR_CYAN}[tools]${COLOR_RESET} $*"
+  echo -e "[tools] $*"
 }
 
 error() {
-  echo -e "${COLOR_RED}[tools]${COLOR_RESET} $*" >&2
+  echo -e "[tools] $*" >&2
 }
 
 get_tool_docs() {
@@ -88,17 +72,17 @@ check_tool() {
   if command -v "${name}" >/dev/null 2>&1; then
     local version_info
     if version_info="$(print_version "${name}")"; then
-      echo -e "${COLOR_GREEN}✓${COLOR_RESET} ${COLOR_BOLD}${name}${COLOR_RESET}: ${COLOR_CYAN}${version_info}${COLOR_RESET}"
+      echo -e "✓ ${name}: ${version_info}"
     else
-      echo -e "${COLOR_GREEN}✓${COLOR_RESET} ${COLOR_BOLD}${name}${COLOR_RESET}"
+      echo -e "✓ ${name}"
     fi
     return 0
   fi
 
   local docs_url
   docs_url="$(get_tool_docs "${name}")"
-  echo -e "${COLOR_RED}✗${COLOR_RESET} ${COLOR_BOLD}${name}${COLOR_RESET} ${COLOR_RED}missing${COLOR_RESET}"
-  echo -e "  ${COLOR_YELLOW}Install instructions:${COLOR_RESET} ${COLOR_CYAN}${docs_url}${COLOR_RESET}" >&2
+  echo -e "✗ ${name} missing"
+  echo -e " Install instructions: ${docs_url}" >&2
   return 1
 }
 
@@ -117,7 +101,7 @@ main() {
   fi
 
   echo ""
-  echo -e "${COLOR_BRIGHT_GREEN}[tools]${COLOR_RESET} ${COLOR_BOLD}All required tools are available!${COLOR_RESET}"
+  echo -e "[tools] All required tools are available!"
 }
 
 main "$@"
