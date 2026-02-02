@@ -30,7 +30,7 @@ equivalent in the Rust spire-agent.
       real Go spire-agent in sandbox should produce the same output.
 - [x] Implement the Rust spire-agent "api fetch jwt" command. Test it against spire-agent-mock to ensure its output is
       the same as the Go spire-agent.
-- [ ] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
+- [x] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
 - [ ] Create a PR from this feature branch to the main branch.
 
 ## References
