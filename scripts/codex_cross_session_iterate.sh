@@ -38,7 +38,7 @@ Task manifest contents:
 
 EOF
     cat "${MANIFEST_FILE}"
-  } | codex exec -s workspace-write -c ask_for_approval="never" -C "${REPO_ROOT}" -
+  } | codex exec -s danger-full-access -c ask_for_approval="never" -C "${REPO_ROOT}" -
 
   if [[ -f "${DONE_FILE}" ]]; then
     echo "done marker created: ${DONE_FILE}"

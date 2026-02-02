@@ -3,6 +3,7 @@ use std::time::Duration;
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 
+use crate::fetch_jwt::fetch_jwt;
 use crate::fetch_x509::fetch_x509;
 use crate::healthcheck::healthcheck;
 
@@ -29,10 +30,9 @@ struct ApiArgs {
         help = "Desired output format (pretty, json); default: pretty."
     )]
     output: String,
-    #[arg(long = "silent", global = true, help = "Suppress stdout")]
-    silent: bool,
     #[arg(
-        long = "socket-path",
+        long = "socketPath",
+        alias = "socket-path",
         value_name = "string",
         default_value = "/tmp/spire-agent/public/api.sock",
         global = true,
@@ -42,18 +42,18 @@ struct ApiArgs {
     #[arg(
         long = "timeout",
         value_name = "value",
-        default_value = "1s",
+        default_value = "5s",
         global = true,
-        help = "Time to wait for a response (default 1s)"
+        help = "Time to wait for a response (default 5s)"
     )]
     timeout: String,
     #[arg(
-        long = "write",
-        value_name = "string",
+        long = "format",
+        value_name = "value",
         global = true,
-        help = "Write SVID data to the specified path (optional; only available for pretty output format)"
+        help = "deprecated; use -output"
     )]
-    write: Option<String>,
+    format: Option<String>,
     #[command(subcommand)]
     command: ApiCommand,
 }
@@ -88,7 +88,38 @@ struct FetchArgs {
 
 #[derive(Subcommand)]
 enum FetchCommand {
-    X509,
+    X509(FetchX509Args),
+    Jwt(FetchJwtArgs),
+}
+
+#[derive(Parser, Default)]
+struct FetchX509Args {
+    #[arg(long = "silent", help = "Suppress stdout")]
+    silent: bool,
+    #[arg(
+        long = "write",
+        value_name = "string",
+        help = "Write SVID data to the specified path (optional; only available for pretty output format)"
+    )]
+    write: Option<String>,
+}
+
+#[derive(Parser, Default)]
+struct FetchJwtArgs {
+    #[arg(
+        long = "audience",
+        value_name = "value",
+        value_delimiter = ',',
+        help = "comma separated list of audience values"
+    )]
+    audience: Vec<String>,
+    #[arg(
+        long = "spiffeID",
+        alias = "spiffe-id",
+        value_name = "string",
+        help = "SPIFFE ID subject (optional)"
+    )]
+    spiffe_id: Option<String>,
 }
 
 fn parse_duration(s: &str) -> Result<Duration> {
@@ -111,9 +142,7 @@ fn split_duration(s: &str) -> Result<(u64, &str)> {
         anyhow::bail!("invalid duration");
     }
 
-    let split_idx = s
-        .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or(s.len());
+    let split_idx = s.find(|c: char| !c.is_ascii_digit()).unwrap_or(s.len());
     let (value_str, unit) = s.split_at(split_idx);
     if value_str.is_empty() {
         anyhow::bail!("invalid duration");
@@ -130,14 +159,9 @@ pub async fn run() {
             command: ApiCommand::Fetch(FetchArgs { command }),
             socket_path,
             timeout,
-            silent,
-            write,
             output,
+            format,
         })) => {
-            if output != "pretty" {
-                eprintln!("Error: only pretty output is supported for api fetch");
-                std::process::exit(1);
-            }
             let timeout = match parse_duration(&timeout) {
                 Ok(d) => d,
                 Err(e) => {
@@ -145,10 +169,31 @@ pub async fn run() {
                     std::process::exit(1);
                 }
             };
+            let output = format.unwrap_or(output);
 
-            match command.unwrap_or(FetchCommand::X509) {
-                FetchCommand::X509 => {
-                    if let Err(e) = fetch_x509(&socket_path, timeout, silent, write.as_deref()).await
+            match command.unwrap_or(FetchCommand::X509(FetchX509Args::default())) {
+                FetchCommand::X509(FetchX509Args { silent, write }) => {
+                    if output != "pretty" {
+                        eprintln!("Error: only pretty output is supported for api fetch x509");
+                        std::process::exit(1);
+                    }
+                    if let Err(e) =
+                        fetch_x509(&socket_path, timeout, silent, write.as_deref()).await
+                    {
+                        eprintln!("Error: {e}");
+                        std::process::exit(1);
+                    }
+                }
+                FetchCommand::Jwt(FetchJwtArgs {
+                    audience,
+                    spiffe_id,
+                }) => {
+                    if audience.is_empty() {
+                        eprintln!("audience must be specified");
+                        std::process::exit(1);
+                    }
+                    if let Err(e) =
+                        fetch_jwt(&socket_path, timeout, audience, spiffe_id, &output).await
                     {
                         eprintln!("Error: {e}");
                         std::process::exit(1);
@@ -186,7 +231,9 @@ pub async fn run() {
 mod tests {
     use std::time::Duration;
 
-    use super::{ApiArgs, ApiCommand, Cli, Commands, FetchArgs, parse_duration};
+    use super::{
+        ApiArgs, ApiCommand, Cli, Commands, FetchArgs, FetchCommand, FetchJwtArgs, parse_duration,
+    };
     use clap::Parser;
 
     #[test]
@@ -212,6 +259,39 @@ mod tests {
                 command: ApiCommand::Fetch(FetchArgs { command: None }),
                 ..
             })) => {}
+            _ => panic!("unexpected parse result"),
+        }
+    }
+
+    #[test]
+    fn api_fetch_jwt_parses_audience_and_spiffe_id() {
+        let cli = Cli::try_parse_from([
+            "spire-agent",
+            "api",
+            "fetch",
+            "jwt",
+            "--audience",
+            "example.org,spiffe.io",
+            "--spiffeID",
+            "spiffe://example.org/workload",
+        ])
+        .unwrap();
+
+        match cli.command {
+            Some(Commands::Api(ApiArgs {
+                command:
+                    ApiCommand::Fetch(FetchArgs {
+                        command:
+                            Some(FetchCommand::Jwt(FetchJwtArgs {
+                                audience,
+                                spiffe_id,
+                            })),
+                    }),
+                ..
+            })) => {
+                assert_eq!(audience, vec!["example.org", "spiffe.io"]);
+                assert_eq!(spiffe_id.as_deref(), Some("spiffe://example.org/workload"));
+            }
             _ => panic!("unexpected parse result"),
         }
     }

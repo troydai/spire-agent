@@ -19,6 +19,9 @@ const-oid = { version = "0.9", features = ["db"] }
 anyhow = "1.0"
 chrono = "0.4"
 pem-rfc7468 = { version = "0.7", features = ["alloc"] }
+base64 = "0.22"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
 
 [build-dependencies]
 tonic-prost-build = "0.14"

@@ -161,10 +161,22 @@ impl SpiffeWorkloadApi for MockWorkloadApi {
 
     async fn fetch_jwtsvid(
         &self,
-        _request: Request<JwtsvidRequest>,
+        request: Request<JwtsvidRequest>,
     ) -> Result<Response<JwtsvidResponse>, Status> {
         println!("Received FetchJWTSVID request");
-        Err(Status::unimplemented("not implemented"))
+        let request = request.into_inner();
+        if request.audience.is_empty() {
+            return Err(Status::invalid_argument("audience must be specified"));
+        }
+
+        let jwt_svid = self
+            .svid_generator
+            .generate_jwt_svid(&request.audience, Some(&request.spiffe_id));
+
+        println!("Sending JWTSVID: {}", jwt_svid.spiffe_id);
+        Ok(Response::new(JwtsvidResponse {
+            svids: vec![jwt_svid],
+        }))
     }
 
     async fn fetch_jwt_bundles(
@@ -172,7 +184,27 @@ impl SpiffeWorkloadApi for MockWorkloadApi {
         _request: Request<JwtBundlesRequest>,
     ) -> Result<Response<Self::FetchJWTBundlesStream>, Status> {
         println!("Received FetchJWTBundles request");
-        Err(Status::unimplemented("not implemented"))
+        let trust_domain = self.svid_generator.trust_domain().to_string();
+        let bundle = self.svid_generator.jwt_bundle();
+        let rotation_interval = self.rotation_interval;
+
+        let stream = async_stream::stream! {
+            loop {
+                let response = JwtBundlesResponse {
+                    bundles: std::collections::HashMap::from_iter([(
+                        format!("spiffe://{}", trust_domain),
+                        bundle.clone(),
+                    )]),
+                };
+
+                println!("Sending JWT bundle for trust domain: {}", trust_domain);
+                yield Ok(response);
+
+                tokio::time::sleep(rotation_interval).await;
+            }
+        };
+
+        Ok(Response::new(Box::pin(stream)))
     }
 
     async fn validate_jwtsvid(
