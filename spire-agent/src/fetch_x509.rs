@@ -44,14 +44,14 @@ async fn fetch_x509svid(
     let request = tonic::Request::new(X509svidRequest {});
     let response = tokio::time::timeout(timeout, client.fetch_x509svid(request))
         .await
-        .context("request timed out")?;
+        .context("request timed out")?
         .context("failed to fetch x509 svid")?;
 
     let mut stream = response.into_inner();
     let resp = tokio::time::timeout(timeout, stream.message())
         .await
-        .context("timed out waiting for response")?;
-        .context("failed to receive message")?;
+        .context("timed out waiting for response")?
+        .context("failed to receive message")?
         .context("empty response from server")?;
 
     Ok(resp)
