@@ -31,7 +31,7 @@ equivalent in the Rust spire-agent.
 - [x] Implement the Rust spire-agent "api fetch jwt" command. Test it against spire-agent-mock to ensure its output is
       the same as the Go spire-agent.
 - [x] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
-- [ ] Create a PR from this feature branch to the main branch.
+- [x] Create a PR from this feature branch to the main branch.
 
 ## References
 
