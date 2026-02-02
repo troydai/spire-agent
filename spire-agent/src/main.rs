@@ -1,4 +1,5 @@
 mod commands;
+mod fetch_jwt;
 mod fetch_x509;
 mod healthcheck;
 mod rpc;

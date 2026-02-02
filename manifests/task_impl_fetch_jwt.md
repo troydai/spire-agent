@@ -28,7 +28,7 @@ equivalent in the Rust spire-agent.
       the tast manifest's reference section for later reference.
 - [x] Update spire-agent-mock to mimic the function of return a JWT SVID. Running Go spire-agent against the mock and
       real Go spire-agent in sandbox should produce the same output.
-- [ ] Implement the Rust spire-agent "api fetch jwt" command. Test it against spire-agent-mock to ensure its output is
+- [x] Implement the Rust spire-agent "api fetch jwt" command. Test it against spire-agent-mock to ensure its output is
       the same as the Go spire-agent.
 - [ ] Integration-test the Rust spire-agent in the sandbox to ensure it passes end-to-end tests.
 - [ ] Create a PR from this feature branch to the main branch.
