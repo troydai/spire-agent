@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use crate::rpc::{connect_channel, connect_workload_client};
-use crate::workload::X509svidRequest;
+use crate::grpc::X509svidRequest;
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(1);
 

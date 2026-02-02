@@ -5,7 +5,7 @@ use tonic::metadata::MetadataValue;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 
-use crate::workload::spiffe_workload_api_client::SpiffeWorkloadApiClient;
+use crate::grpc::spiffe_workload_api_client::SpiffeWorkloadApiClient;
 
 const SECURITY_HEADER_KEY: &str = "workload.spiffe.io";
 const SECURITY_HEADER_VALUE: &str = "true";
